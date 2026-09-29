@@ -6,7 +6,8 @@ import {validateRules,type PolicyRule} from "@attention-firewall/policy-engine";
 import {DEFAULT_HISTORY,emptyDay,recordInterventionOutcome,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
 interface ActivitySample{type:"ACTIVITY_SAMPLE";scrollCount:number;interactionCount:number;elapsedSeconds:number;domain:string}
-interface SessionRuntimeState{domain:string;runtime:AttentionRuntime;lastInterventionAt:number}
+interface SessionStart{type:"SESSION_START";domain:string}
+interface SessionRuntimeState{domain:string;runtime:AttentionRuntime;lastInterventionAt:number;contextSwitches:number}
 
 const CONTENT_SCRIPT_ID="attention-firewall-local-detector";
 const runtimes=new Map<number,SessionRuntimeState>();
@@ -28,6 +29,10 @@ chrome.runtime.onMessage.addListener((message:unknown,sender)=>{
  }
  if(sender.tab?.id===undefined)return;
 
+ if(isSessionStart(message)){
+  void handleSessionStart(sender.tab.id,message);
+  return;
+ }
  if(isActivityMessage(message)){
   void handleActivity(sender.tab.id,message);
   return;
@@ -103,8 +108,8 @@ async function handleActivity(tabId:number,message:ActivitySample){
  const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
 
  let current=state;
- if(!current||current.domain!==message.domain){
-  current={domain:message.domain,lastInterventionAt:0,runtime:new AttentionRuntime({
+ if(!current){
+  current={domain:message.domain,lastInterventionAt:0,contextSwitches:0,runtime:new AttentionRuntime({
    protectionMode,
    profile,
    rules:safeRules(stored.rules),
@@ -112,6 +117,9 @@ async function handleActivity(tabId:number,message:ActivitySample){
   },undefined,typeof stored.dailySummary==="object"&&stored.dailySummary?stored.dailySummary:undefined)};
   runtimes.set(tabId,current);
   current.runtime.begin(message.domain);
+ }else if(current.domain!==message.domain){
+  current.domain=message.domain;
+  current.contextSwitches=Math.min(current.contextSwitches+1,1000);
  }
 
  current.runtime.setConfig({
@@ -131,6 +139,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
   interactions:message.interactionCount,
   scrolls:message.scrollCount,
   domain:message.domain,
+  contextSwitches:current.contextSwitches,
   lateNightRisk:hour>=22||hour<6?1:0
  });
 
@@ -157,6 +166,30 @@ async function handleResponse(intervention:string,outcome:"continued"|"exited"){
  const existingHistory=stored.dailyHistory as DailyHistory|undefined;
  const nextHistory=pruneHistory(upsertDay(existingHistory?.version===1?existingHistory:DEFAULT_HISTORY,summary),30);
  await chrome.storage.local.set({interventionProfile:profile,dailySummary:summary,dailyHistory:nextHistory});
+}
+
+async function handleSessionStart(tabId:number,message:SessionStart){
+ const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary"]);
+ const intent=sanitizeIntent(stored.currentIntent);
+ const profile=parseInterventionProfile(stored.interventionProfile);
+ const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
+ let state=runtimes.get(tabId);
+ if(!state){
+  state={domain:message.domain,lastInterventionAt:0,contextSwitches:0,runtime:new AttentionRuntime({
+   protectionMode,profile,rules:safeRules(stored.rules),intent:intent as IntentEnvelope|undefined
+  },undefined,typeof stored.dailySummary==="object"&&stored.dailySummary?stored.dailySummary:undefined)};
+  runtimes.set(tabId,state);
+  state.runtime.begin(message.domain);
+ }else if(state.domain!==message.domain){
+  state.domain=message.domain;
+  state.contextSwitches=Math.min(state.contextSwitches+1,1000);
+ }
+}
+
+function isSessionStart(value:unknown):value is SessionStart{
+ if(!value||typeof value!=="object")return false;
+ const v=value as Record<string,unknown>;
+ return v.type==="SESSION_START"&&v.protocolVersion===1&&typeof v.domain==="string"&&v.domain.length>=1&&v.domain.length<=253;
 }
 
 function safeRules(value:unknown):PolicyRule[]{try{return validateRules(value)}catch{return []}}
