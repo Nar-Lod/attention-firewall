@@ -9,6 +9,7 @@ interface SessionRuntimeState{domain:string;runtime:AttentionRuntime;lastInterve
 
 const CONTENT_SCRIPT_ID="attention-firewall-local-detector";
 const runtimes=new Map<number,SessionRuntimeState>();
+const pendingRecovery=new Map<number,{startedAt:number}>();
 
 chrome.runtime.onInstalled.addListener(()=>void syncProtection());
 chrome.runtime.onStartup.addListener(()=>void syncProtection());
@@ -31,7 +32,12 @@ chrome.runtime.onMessage.addListener((message:unknown,sender)=>{
   return;
  }
  if(isInterventionResponse(message)){
+  if(message.outcome==="exited")pendingRecovery.set(sender.tab.id,{startedAt:Date.now()});
   void handleResponse(message.intervention,message.outcome);
+  return;
+ }
+ if(isRecoveryCompleted(message)){
+  void handleRecovery(sender.tab.id,message.durationSeconds);
  }
 });
 
@@ -143,7 +149,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
 
  if(result.intervention!=="none"&&Date.now()-current.lastInterventionAt>=60_000){
   current.lastInterventionAt=Date.now();
-  await chrome.tabs.sendMessage(tabId,{type:"ATTENTION_INTERVENTION",intervention:result.intervention}).catch(()=>{});
+  await chrome.tabs.sendMessage(tabId,{type:"ATTENTION_INTERVENTION",intervention:result.intervention,recoveryMinutes:result.recoveryMinutes}).catch(()=>{});
  }
 }
 
@@ -163,6 +169,26 @@ async function handleResponse(intervention:string,outcome:"continued"|"exited"){
 }
 
 function safeRules(value:unknown):PolicyRule[]{try{return validateRules(value)}catch{return []}}
+
+async function handleRecovery(tabId:number,durationSeconds:number){
+ const pending=pendingRecovery.get(tabId);
+ if(!pending||Date.now()-pending.startedAt>60_000){pendingRecovery.delete(tabId);return;}
+ const bounded=Math.max(120,Math.min(durationSeconds,600));
+ const stored=await chrome.storage.local.get(["dailySummary","dailyHistory"]);
+ let summary=stored.dailySummary as ReturnType<typeof emptyDay>|undefined;
+ summary=summary&&summary.date===new Date().toISOString().slice(0,10)?summary:emptyDay();
+ summary=addDailySeconds(summary,"attentionRecoveredSeconds",bounded);
+ const existingHistory=stored.dailyHistory as DailyHistory|undefined;
+ const nextHistory=pruneHistory(upsertDay(existingHistory?.version===1?existingHistory:DEFAULT_HISTORY,summary),30);
+ pendingRecovery.delete(tabId);
+ await chrome.storage.local.set({dailySummary:summary,dailyHistory:nextHistory});
+}
+
+function isRecoveryCompleted(value:unknown):value is {type:"RECOVERY_COMPLETED";durationSeconds:number}{
+ if(!value||typeof value!=="object")return false;
+ const v=value as Record<string,unknown>;
+ return v.type==="RECOVERY_COMPLETED"&&typeof v.durationSeconds==="number"&&Number.isFinite(v.durationSeconds)&&v.durationSeconds>=120&&v.durationSeconds<=600;
+}
 
 function messageType(value:unknown):string{
  if(!value||typeof value!=="object")return "";
