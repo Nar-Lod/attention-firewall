@@ -1,3 +1,5 @@
+import {encryptJson} from "@attention-firewall/security-core";
+
 type Purpose="work"|"study"|"communication"|"entertainment"|"rest"|"other";
 interface LocalIntent{label:string;targetDomains:string[];startedAt:number;purpose:Purpose;budgetMinutes?:number}
 interface DailySummary{date:string;intentionalSeconds:number;passiveSeconds:number;driftEpisodes:number;interventionsShown:number;interventionsAccepted:number;attentionRecoveredSeconds:number}
@@ -150,4 +152,33 @@ document.getElementById("saveCommitment")?.addEventListener("click",async()=>{
  commitDomainEl.value="";
  commitMinutesEl.value="";
  statusEl.textContent="Commitment started on this device.";
+});
+
+
+document.getElementById("exportLocal")?.addEventListener("click",async()=>{
+ try{
+  const passphrase=window.prompt("Create an export passphrase (12+ characters). It is never sent to Attention Firewall.");
+  if(!passphrase||passphrase.length<12){statusEl.textContent="Export cancelled. Use at least 12 characters.";return;}
+  const snapshot=await chrome.storage.local.get(null);
+  const blob=await encryptJson({exportedAt:new Date().toISOString(),data:snapshot},passphrase);
+  const file=new Blob([JSON.stringify(blob,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(file);
+  const link=document.createElement("a");
+  link.href=url;
+  link.download="attention-firewall-encrypted-profile.json";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  statusEl.textContent="Encrypted local export created.";
+ }catch{
+  statusEl.textContent="Export failed. No data was uploaded.";
+ }
+});
+
+document.getElementById("clearLocal")?.addEventListener("click",async()=>{
+ const confirmed=window.confirm("Delete all Attention Firewall data stored in this browser/extension? This cannot be undone.");
+ if(!confirmed)return;
+ await chrome.runtime.sendMessage({type:"CLEAR_LOCAL_DATA"});
+ statusEl.textContent="Local data deleted.";
 });
