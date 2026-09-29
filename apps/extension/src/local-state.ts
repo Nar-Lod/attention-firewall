@@ -1,4 +1,5 @@
 import {EncryptedIndexedDbStore} from "@attention-firewall/secure-browser-store";
+import {sweepLocalState} from "@attention-firewall/data-lifecycle";
 import type {DailyHistory,DailySummary} from "@attention-firewall/local-analytics";
 import type {InterventionProfile} from "@attention-firewall/attention-engine";
 import type {PolicyRule} from "@attention-firewall/policy-engine";
@@ -32,7 +33,7 @@ export async function getLocalState():Promise<ExtensionState>{
  const existing=await store.get();
  if(existing?.version===2)return {...defaults,...existing};
  const legacy=await chrome.storage.local.get(["currentIntent","protectionMode","dailySummary","dailyHistory","interventionProfile","rules","commitments"]);
- const migrated:ExtensionState={
+ let migrated:ExtensionState={
   ...defaults,
   currentIntent:legacy.currentIntent as IntentEnvelope|undefined,
   protectionMode:legacy.protectionMode==="strict"?"strict":"adaptive",
@@ -42,7 +43,7 @@ export async function getLocalState():Promise<ExtensionState>{
   rules:Array.isArray(legacy.rules)?legacy.rules as PolicyRule[]:[],
   commitments:Array.isArray(legacy.commitments)?legacy.commitments as Commitment[]:[]
  };
- const hasLegacy=Object.values(legacy).some(value=>value!==undefined);
+ const cleaned=sweepLocalState({dailyHistory:migrated.dailyHistory??{version:1,days:[]},commitments:migrated.commitments,interventionProfile:migrated.interventionProfile},Date.now(),30);\n migrated={...migrated,...cleaned};\n const hasLegacy=Object.values(legacy).some(value=>value!==undefined);
  if(hasLegacy){
   await store.set(migrated);
   await chrome.storage.local.remove(["currentIntent","protectionMode","dailySummary","dailyHistory","interventionProfile","rules","commitments"]);
