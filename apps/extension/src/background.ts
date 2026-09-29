@@ -1,4 +1,5 @@
 import {AttentionRuntime} from "@attention-firewall/attention-runtime";
+import {DEFAULT_HISTORY,emptyDay,recordIntervention,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
 interface LocalIntent{label:string;targetDomains:string[];startedAt:number;purpose?:"work"|"study"|"communication"|"entertainment"|"rest"|"other"}
 interface LocalProfile{successByIntervention:Record<string,number>;attemptsByIntervention:Record<string,number>}
@@ -136,7 +137,9 @@ async function handleActivity(tabId:number,message:ActivitySample){
   lateNightRisk:hour>=22||hour<6?1:0
  });
 
- await chrome.storage.local.set({dailySummary:result.dailySummary});
+ const existingHistory=stored.dailyHistory as DailyHistory|undefined;
+ const nextHistory=pruneHistory(upsertDay(existingHistory?.version===1?existingHistory:DEFAULT_HISTORY,result.dailySummary),30);
+ await chrome.storage.local.set({dailySummary:result.dailySummary,dailyHistory:nextHistory});
 
  if(result.intervention!=="none"&&Date.now()-current.lastInterventionAt>=60_000){
   current.lastInterventionAt=Date.now();
@@ -145,13 +148,18 @@ async function handleActivity(tabId:number,message:ActivitySample){
 }
 
 async function handleResponse(intervention:string,outcome:"continued"|"exited"){
- const stored=await chrome.storage.local.get(["interventionProfile","dailySummary"]);
+ const stored=await chrome.storage.local.get(["interventionProfile","dailySummary","dailyHistory"]);
  const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{}};
  profile.attemptsByIntervention[intervention]=(profile.attemptsByIntervention[intervention]??0)+1;
  if(outcome==="exited")profile.successByIntervention[intervention]=(profile.successByIntervention[intervention]??0)+1;
 
  for(const state of runtimes.values())state.runtime.respond(intervention,outcome);
- await chrome.storage.local.set({interventionProfile:profile});
+ let summary=stored.dailySummary as ReturnType<typeof emptyDay>|undefined;
+ summary=summary&&summary.date===new Date().toISOString().slice(0,10)?summary:emptyDay();
+ summary=recordIntervention(summary,outcome==="exited");
+ const existingHistory=stored.dailyHistory as DailyHistory|undefined;
+ const nextHistory=pruneHistory(upsertDay(existingHistory?.version===1?existingHistory:DEFAULT_HISTORY,summary),30);
+ await chrome.storage.local.set({interventionProfile:profile,dailySummary:summary,dailyHistory:nextHistory});
 }
 
 function messageType(value:unknown):string{
