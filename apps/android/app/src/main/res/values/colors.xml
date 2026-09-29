@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="af_ink">#090909</color>
+    <color name="af_surface">#101010</color>
+    <color name="af_surface_2">#151515</color>
+    <color name="af_border">#292929</color>
+    <color name="af_maroon">#6F202C</color>
+    <color name="af_red">#B83343</color>
+    <color name="af_gold">#D7BB62</color>
+    <color name="af_bone">#F5F1EB</color>
+    <color name="af_muted">#858585</color>
+</resources>
