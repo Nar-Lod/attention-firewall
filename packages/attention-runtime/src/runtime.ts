@@ -82,7 +82,7 @@ export class AttentionRuntime{
 
   const cooldownActive=session.lastInterventionAt!==undefined&&now-session.lastInterventionAt<60_000;
   const selected=chooseIntervention(assessment,this.config.profile,now,{strict:this.config.protectionMode==="strict"});
-  const policyIntervention=applyPolicy(selected.intervention,this.config.rules,{domain:intent?.targetDomains[0]??"web",minuteOfDay:new Date(now).getHours()*60+new Date(now).getMinutes()});\n  const intervention=cooldownActive?"none":policyIntervention;
+  const policyIntervention=applyPolicy(selected.intervention,this.config.rules,{domain:sample.domain??"web",minuteOfDay:new Date(now).getHours()*60+new Date(now).getMinutes()});\n  const intervention=cooldownActive?"none":policyIntervention;
 
   if(intervention!=="none")session.lastInterventionAt=now;
 
