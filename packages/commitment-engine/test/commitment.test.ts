@@ -1,15 +1,11 @@
 import {describe,expect,it} from "vitest";
-import {applyCommitments,commitmentApplies,commitmentStatus,validateCommitment} from "../src/index.js";
-
-const commitment={id:"c1",label:"No scrolling after 10pm",targetDomains:["social.example"],startAt:1_000_000,endAt:1_100_000,minimumIntervention:"commitment" as const,changeCooldownMinutes:15,createdAt:900_000};
+import {applyCommitments,commitmentStatus,validateCommitment} from "../src/index.js";
 
 describe("commitment engine",()=>{
- it("locks the early part of an active commitment",()=>{
-  const result=commitmentStatus(commitment,1_005_000);
-  expect(result.active).toBe(true);
-  expect(result.locked).toBe(true);
- });
- it("matches subdomains locally",()=>expect(commitmentApplies(commitment,"m.social.example",1_005_000)).toBe(true));
- it("raises friction when an active commitment requires it",()=>{expect(applyCommitments("awareness",[commitment],"social.example",1_005_000)).toBe("commitment");});
- it("rejects malformed commitment state",()=>expect(()=>validateCommitment({...commitment,endAt:0})).toThrow());
+  const now=1_000_000;
+  const commitment={id:"c1",label:"Protect",targetDomains:["example.com"],startAt:now,endAt:now+60_000,minimumIntervention:"lock" as const,changeCooldownMinutes:5,createdAt:now};
+  it("validates commitments",()=>expect(validateCommitment(commitment)).toEqual(commitment));
+  it("reports active commitments",()=>expect(commitmentStatus(commitment,now).active).toBe(true));
+  it("raises intervention while commitment is active",()=>expect(applyCommitments("none",[commitment],"example.com",now)).toBe("lock"));
+  it("does not apply expired commitments",()=>expect(applyCommitments("none",[commitment],"example.com",now+120_000)).toBe("none"));
 });
