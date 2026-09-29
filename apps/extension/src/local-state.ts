@@ -57,15 +57,18 @@ export async function getLocalState():Promise<ExtensionState>{
   "interventionProfile","rules","commitments"
  ]);
 
- let migrated:ExtensionState={
+ const migratedBase:ExtensionState={
   ...defaults,
-  currentIntent:legacy.currentIntent as IntentEnvelope|undefined,
   protectionMode:legacy.protectionMode==="strict"?"strict":"adaptive",
-  dailySummary:legacy.dailySummary as DailySummary|undefined,
-  dailyHistory:legacy.dailyHistory as DailyHistory|undefined,
   interventionProfile:(legacy.interventionProfile as InterventionProfile|undefined)??defaults.interventionProfile,
   rules:Array.isArray(legacy.rules)?legacy.rules as PolicyRule[]:[],
   commitments:Array.isArray(legacy.commitments)?legacy.commitments as Commitment[]:[]
+ };
+ let migrated:ExtensionState={
+  ...migratedBase,
+  ...(legacy.currentIntent!==undefined?{currentIntent:legacy.currentIntent as IntentEnvelope}:{}),
+  ...(legacy.dailySummary!==undefined?{dailySummary:legacy.dailySummary as DailySummary}:{}),
+  ...(legacy.dailyHistory!==undefined?{dailyHistory:legacy.dailyHistory as DailyHistory}:{}),
  };
 
  const cleaned=sweepLocalState({
