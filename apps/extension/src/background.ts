@@ -1,5 +1,5 @@
 import {AttentionRuntime} from "@attention-firewall/attention-runtime";
-import {parseInterventionProfile} from "@attention-firewall/local-store";
+import {parseCommitments,parseInterventionProfile} from "@attention-firewall/local-store";
 import {sanitizeIntent,type IntentEnvelope} from "@attention-firewall/intent-engine";
 import {validateRuntimeSample} from "@attention-firewall/runtime-protocol";
 import {buildAttentionTwin} from "@attention-firewall/personalization-engine";
@@ -116,6 +116,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
  const intent=sanitizeIntent(stored.currentIntent);
  const profile=parseInterventionProfile(stored.interventionProfile);
  const savedHistory=stored.dailyHistory as DailyHistory|undefined;
+ const commitments=parseCommitments(stored.commitments);
  const attentionTwin=buildAttentionTwin(savedHistory?.version===1?savedHistory.days:[],profile);
  const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
 
@@ -186,7 +187,7 @@ async function handleResponse(intervention:string,outcome:"continued"|"exited"){
 }
 
 async function handleSessionStart(tabId:number,message:SessionStart){
- const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary"]);
+ const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","commitments","rules"]);
  const intent=sanitizeIntent(stored.currentIntent);
  const profile=parseInterventionProfile(stored.interventionProfile);
  const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
