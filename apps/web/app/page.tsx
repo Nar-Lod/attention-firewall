@@ -22,6 +22,7 @@ type LocalIntent={
 };
 type Profile={
  version:1;
+ protectionMode:Mode;
  intent?:LocalIntent;
  rules:PolicyRule[];
  commitments:Commitment[];
