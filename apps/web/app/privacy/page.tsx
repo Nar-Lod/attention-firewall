@@ -34,7 +34,8 @@ export default function PrivacyPage(){
    version:1,rules:[],commitments:[],interventionProfile:{},
    privacy:{telemetryOptIn:false,researchOptIn:false},securityEvents:[]
   };
-  const securityEvents=[...(existing.securityEvents??[]),createSecurityEvent("permission_changed","success")].slice(-100);\n  await profileStore.set({...existing,privacy:{telemetryOptIn:false,researchOptIn:false},securityEvents});
+  const securityEvents=[...(existing.securityEvents??[]),createSecurityEvent("permission_changed","success")].slice(-100);
+  await profileStore.set({...existing,privacy:{telemetryOptIn:false,researchOptIn:false},securityEvents});
   setMessage("Local-only mode is enabled. No behavioral telemetry is required.");
  };
 
@@ -57,7 +58,9 @@ export default function PrivacyPage(){
    link.click();
    link.remove();
    URL.revokeObjectURL(url);
-   const securityEvents=[...(profile.securityEvents??[]),createSecurityEvent("encrypted_export_created","success")].slice(-100);\n   await profileStore.set({...profile,securityEvents});\n   setMessage("Encrypted local export created. The passphrase never leaves this browser.");
+   const securityEvents=[...(profile.securityEvents??[]),createSecurityEvent("encrypted_export_created","success")].slice(-100);
+   await profileStore.set({...profile,securityEvents});
+   setMessage("Encrypted local export created. The passphrase never leaves this browser.");
   }catch{
    setMessage("Export failed. No data was uploaded.");
   }
