@@ -10,6 +10,7 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 
 class MainActivity : Activity() {
     private lateinit var status: TextView
@@ -30,7 +31,7 @@ class MainActivity : Activity() {
         }
 
         findViewById<Button>(R.id.hardProtection).setOnClickListener {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            showHardProtectionDisclosure()
         }
 
         findViewById<Button>(R.id.saveProtected).setOnClickListener {
@@ -51,6 +52,20 @@ class MainActivity : Activity() {
 
         populateApps()
         status.text = currentStatus()
+    }
+
+    private fun showHardProtectionDisclosure() {
+        AlertDialog.Builder(this)
+            .setTitle("Enable Hard Protection")
+            .setMessage(
+                "Hard Protection uses Android AccessibilityService only to detect which app is currently in the foreground and place a local protection overlay. " +
+                    "Attention Firewall does not read screen contents, messages, passwords, or page text. The service is optional, stays on-device, and can be disabled in Android Settings."
+            )
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("I understand & enable") { _, _ ->
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            }
+            .show()
     }
 
     override fun onResume() {
