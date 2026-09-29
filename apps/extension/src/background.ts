@@ -52,7 +52,7 @@ async function syncProtection(){
 }
 
 async function enableWebProtection(){
- const granted=await chrome.permissions.request({origins:["https://*/*"]});
+ const granted=await chrome.permissions.contains({origins:["https://*/*"]});
  if(!granted){
   await chrome.storage.local.set({webProtectionEnabled:false});
   return;
