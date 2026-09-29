@@ -8,36 +8,37 @@ import type {DailySummary} from "@attention-firewall/local-analytics";
 export type ProtectionMode="adaptive"|"strict";
 
 export interface RuntimeSession{
-  id:string;
-  startedAt:number;
-  lastActivityAt:number;
-  elapsedSeconds:number;
-  passiveSeconds:number;
-  recentReopens:number;
-  interactionCount:number;
-  scrollCount:number;
-  contextSwitches:number;
-  intentMatch:number;
-  outsideIntent:boolean;
-  lateNightRisk:number;
-  notificationLaunch:boolean;
-  previousInterventionIgnored:boolean;
-  lastInterventionAt?:number;
-  state:"active"|"paused"|"completed";
+ id:string;
+ startedAt:number;
+ lastActivityAt:number;
+ elapsedSeconds:number;
+ passiveSeconds:number;
+ recentReopens:number;
+ interactionCount:number;
+ scrollCount:number;
+ contextSwitches:number;
+ intentMatch:number;
+ outsideIntent:boolean;
+ lateNightRisk:number;
+ notificationLaunch:boolean;
+ previousInterventionIgnored:boolean;
+ lastInterventionAt?:number;
+ state:"active"|"paused"|"completed";
 }
 
 export interface RuntimeConfig{
-  protectionMode:ProtectionMode;
-  profile:InterventionProfile;
-  intent?:IntentEnvelope;\n  rules:PolicyRule[];
-  attentionTwin?:AttentionTwin;
-  commitments:Commitment[];
+ protectionMode:ProtectionMode;
+ profile:InterventionProfile;
+ intent?:IntentEnvelope;
+ rules:PolicyRule[];
+ attentionTwin?:AttentionTwin;
+ commitments:Commitment[];
 }
 
 export interface RuntimeDecision{
-  session:RuntimeSession;
-  assessment:AttentionAssessment;
-  intervention:Intervention;
-  recoveryMinutes:number;
-  dailySummary:DailySummary;
+ session:RuntimeSession;
+ assessment:AttentionAssessment;
+ intervention:Intervention;
+ recoveryMinutes:number;
+ dailySummary:DailySummary;
 }
