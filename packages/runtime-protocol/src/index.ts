@@ -9,6 +9,9 @@ export interface RuntimeSample{
  elapsedSeconds:number;
  interactions:number;
  scrolls:number;
+ scrollBursts?:number;
+ scrollDirectionChanges?:number;
+ scrollDistancePerMinute?:number;
  contextSwitches?:number;
  intentMatch?:number;
  outsideIntent?:boolean;
@@ -50,6 +53,9 @@ export function validateRuntimeSample(value:unknown):RuntimeSample{
   protocolVersion:RUNTIME_PROTOCOL_VERSION,platform:v.platform as RuntimePlatform,
   ...(v.domain!==undefined?{domain:v.domain as string}:{}),
   elapsedSeconds:v.elapsedSeconds as number,interactions:v.interactions as number,scrolls:v.scrolls as number,
+  ...(v.scrollBursts!==undefined?{scrollBursts:v.scrollBursts as number}:{}),
+  ...(v.scrollDirectionChanges!==undefined?{scrollDirectionChanges:v.scrollDirectionChanges as number}:{}),
+  ...(v.scrollDistancePerMinute!==undefined?{scrollDistancePerMinute:v.scrollDistancePerMinute as number}:{}),
   ...(v.contextSwitches!==undefined?{contextSwitches:v.contextSwitches as number}:{}),
   ...(v.intentMatch!==undefined?{intentMatch:v.intentMatch as number}:{}),
   ...(v.outsideIntent!==undefined?{outsideIntent:v.outsideIntent as boolean}:{}),
