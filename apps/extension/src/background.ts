@@ -5,10 +5,25 @@ interface LocalProfile{successByIntervention:Record<string,number>;attemptsByInt
 interface ActivitySample{type:"ACTIVITY_SAMPLE";scrollCount:number;interactionCount:number;elapsedSeconds:number;domain:string}
 interface SessionRuntimeState{domain:string;runtime:AttentionRuntime;lastInterventionAt:number}
 
+const CONTENT_SCRIPT_ID="attention-firewall-local-detector";
 const runtimes=new Map<number,SessionRuntimeState>();
 
+chrome.runtime.onInstalled.addListener(()=>void syncProtection());
+chrome.runtime.onStartup.addListener(()=>void syncProtection());
+chrome.permissions.onAdded.addListener(()=>void syncProtection());
+chrome.permissions.onRemoved.addListener(()=>void handlePermissionRemoved());
+
 chrome.runtime.onMessage.addListener((message:unknown,sender)=>{
+ if(messageType(message)==="ENABLE_WEB_PROTECTION"){
+  void enableWebProtection();
+  return;
+ }
+ if(messageType(message)==="DISABLE_WEB_PROTECTION"){
+  void disableWebProtection();
+  return;
+ }
  if(sender.tab?.id===undefined)return;
+
  if(isActivityMessage(message)){
   void handleActivity(sender.tab.id,message);
   return;
@@ -17,6 +32,59 @@ chrome.runtime.onMessage.addListener((message:unknown,sender)=>{
   void handleResponse(message.intervention,message.outcome);
  }
 });
+
+async function syncProtection(){
+ const granted=await chrome.permissions.contains({origins:["https://*/*"],permissions:["scripting"]});
+ const stored=await chrome.storage.local.get("webProtectionEnabled");
+ if(granted&&stored.webProtectionEnabled===true){
+  await registerDetector();
+ }else if(stored.webProtectionEnabled===true&&!granted){
+  await chrome.storage.local.set({webProtectionEnabled:false});
+ }
+}
+
+async function enableWebProtection(){
+ const granted=await chrome.permissions.request({origins:["https://*/*"]});
+ if(!granted){
+  await chrome.storage.local.set({webProtectionEnabled:false});
+  return;
+ }
+ await chrome.storage.local.set({webProtectionEnabled:true});
+ await registerDetector();
+}
+
+async function disableWebProtection(){
+ await unregisterDetector();
+ await chrome.storage.local.set({webProtectionEnabled:false});
+ runtimes.clear();
+}
+
+async function handlePermissionRemoved(){
+ const current=await chrome.storage.local.get("webProtectionEnabled");
+ if(current.webProtectionEnabled===true){
+  await chrome.storage.local.set({webProtectionEnabled:false});
+ }
+ await unregisterDetector();
+ runtimes.clear();
+}
+
+async function registerDetector(){
+ const existing=await chrome.scripting.getRegisteredContentScripts({ids:[CONTENT_SCRIPT_ID]});
+ if(existing.length>0)return;
+ await chrome.scripting.registerContentScripts([{
+  id:CONTENT_SCRIPT_ID,
+  matches:["https://*/*"],
+  js:["content.js"],
+  runAt:"document_idle",
+  allFrames:false,
+  persistAcrossSessions:true,
+  world:"ISOLATED"
+ }]);
+}
+
+async function unregisterDetector(){
+ await chrome.scripting.unregisterContentScripts({ids:[CONTENT_SCRIPT_ID]}).catch(()=>{});
+}
 
 async function handleActivity(tabId:number,message:ActivitySample){
  const state=runtimes.get(tabId);
@@ -31,18 +99,34 @@ async function handleActivity(tabId:number,message:ActivitySample){
    protectionMode,
    profile,
    intent:intent?{
-    id:intent.startedAt.toString(36),label:intent.label,purpose:intent.purpose??"other",
-    targetDomains:intent.targetDomains,startedAt:intent.startedAt
+    id:intent.startedAt.toString(36),
+    label:intent.label,
+    purpose:intent.purpose??"other",
+    targetDomains:intent.targetDomains,
+    startedAt:intent.startedAt
    }:undefined
-  })};
+  },undefined,typeof stored.dailySummary==="object"&&stored.dailySummary?stored.dailySummary:undefined)};
   runtimes.set(tabId,current);
   current.runtime.begin(message.domain);
+ }
+
+ current.runtime.setConfig({
+  protectionMode,
+  profile,
+  intent:intent?{
+   id:intent.startedAt.toString(36),label:intent.label,purpose:intent.purpose??"other",
+   targetDomains:intent.targetDomains,startedAt:intent.startedAt
+  }:undefined
+ });
+ if(typeof stored.dailySummary==="object"&&stored.dailySummary){
+  current.runtime.setSummary(stored.dailySummary);
  }
 
  const allowed=new Set((intent?.targetDomains??[]).map(v=>v.toLowerCase()));
  const outsideIntent=Boolean(intent&&allowed.size>0&&!allowed.has(message.domain.toLowerCase()));
  const intentMatch=!intent||allowed.size===0||allowed.has(message.domain.toLowerCase())?1:0;
  const hour=new Date().getHours();
+
  const result=current.runtime.sample({
   elapsedSeconds:message.elapsedSeconds,
   interactions:message.interactionCount,
@@ -56,7 +140,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
 
  if(result.intervention!=="none"&&Date.now()-current.lastInterventionAt>=60_000){
   current.lastInterventionAt=Date.now();
-  await chrome.tabs?.sendMessage?.(tabId,{type:"ATTENTION_INTERVENTION",intervention:result.intervention}).catch(()=>{});
+  await chrome.tabs.sendMessage(tabId,{type:"ATTENTION_INTERVENTION",intervention:result.intervention}).catch(()=>{});
  }
 }
 
@@ -65,10 +149,15 @@ async function handleResponse(intervention:string,outcome:"continued"|"exited"){
  const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{}};
  profile.attemptsByIntervention[intervention]=(profile.attemptsByIntervention[intervention]??0)+1;
  if(outcome==="exited")profile.successByIntervention[intervention]=(profile.successByIntervention[intervention]??0)+1;
- await chrome.storage.local.set({interventionProfile:profile});
 
  for(const state of runtimes.values())state.runtime.respond(intervention,outcome);
- void stored.dailySummary;
+ await chrome.storage.local.set({interventionProfile:profile});
+}
+
+function messageType(value:unknown):string{
+ if(!value||typeof value!=="object")return "";
+ const type=(value as Record<string,unknown>).type;
+ return typeof type==="string"&&type.length<=64?type:"";
 }
 
 function isActivityMessage(value:unknown):value is ActivitySample{
