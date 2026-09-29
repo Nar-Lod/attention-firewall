@@ -2,16 +2,6 @@ import {NextResponse} from "next/server";
 import type {NextRequest} from "next/server";
 import {randomUUID} from "node:crypto";
 
-const matcher=[
-  {
-    source:"/((?!api|_next/static|_next/image|favicon.ico).*)",
-    missing:[
-      {type:"header",key:"next-router-prefetch"},
-      {type:"header",key:"purpose",value:"prefetch"}
-    ]
-  }
-];
-
 export function proxy(request:NextRequest){
   const nonce=Buffer.from(randomUUID()).toString("base64");
   const csp=[
@@ -39,4 +29,14 @@ export function proxy(request:NextRequest){
   return response;
 }
 
-export const config={matcher};
+export const config={
+  matcher:[
+    {
+      source:"/((?!api|_next/static|_next/image|favicon.ico).*)",
+      missing:[
+        {type:"header",key:"next-router-prefetch"},
+        {type:"header",key:"purpose",value:"prefetch"}
+      ]
+    }
+  ]
+};
