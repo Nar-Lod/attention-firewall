@@ -7,6 +7,7 @@ function config(){
   protectionMode:"adaptive" as const,
   profile:{successByIntervention:{},attemptsByIntervention:{}},
   rules:[],
+  attentionTwin:{version:1,sampleDays:0,preferredIntervention:"awareness",interventionSuccess:{},highRiskHours:[],attentionRecoveredSeconds:0,consistency:1},
   intent:{id:"1",label:"study",purpose:"study" as const,targetDomains:["example.com"],startedAt:0}
  };
 }
@@ -37,6 +38,13 @@ describe("AttentionRuntime",()=>{
   if(r.intervention!=="none")rt.respond(r.intervention,"exited");
   expect(rt.getSummary().interventionsAccepted).toBe(before+1);
  });
+ it("preempts a known local high-risk window after enough history",()=>{
+   const cfg=config();cfg.attentionTwin={version:1,sampleDays:7,preferredIntervention:"pause",interventionSuccess:{pause:.8},highRiskHours:[10],attentionRecoveredSeconds:0,consistency:.5};
+   let now=new Date("2026-09-29T10:10:00").getTime();
+   const rt=new AttentionRuntime(cfg,{now:()=>now});rt.begin("example.com");
+   const r=rt.sample({elapsedSeconds:300,interactions:20,scrolls:40,domain:"example.com"});
+   expect(r.intervention).toBe("awareness");
+  });
  it("times out inactive sessions",()=>{
   let now=1000;
   const rt=new AttentionRuntime(config(),{now:()=>now});
