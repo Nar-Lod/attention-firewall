@@ -1,6 +1,6 @@
 {
   "framework":"nextjs",
-  "installCommand":"pnpm install --no-frozen-lockfile",
+  "installCommand":"corepack enable && corepack prepare pnpm@12.7.0 --activate && pnpm install --no-frozen-lockfile",
   "buildCommand":"pnpm --filter @attention-firewall/web... build",
   "devCommand":"pnpm --filter @attention-firewall/web dev"
 }
