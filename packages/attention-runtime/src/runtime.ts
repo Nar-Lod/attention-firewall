@@ -1,4 +1,5 @@
 import {assessAttention,chooseIntervention,detectPassiveScrollLoop} from "@attention-firewall/attention-engine";
+import type {Intervention} from "@attention-firewall/attention-engine";
 import {addDailySeconds,emptyDay,recordDriftEpisode,recordInterventionOutcome,recordInterventionShown,todayKey,type DailySummary} from "@attention-firewall/local-analytics";
 import {recommendRecovery} from "@attention-firewall/recovery-engine";
 import type {RuntimeConfig,RuntimeDecision,RuntimeSession} from "./types.js";
@@ -137,23 +138,24 @@ export class AttentionRuntime {
       session.scrollCount/Math.max(1,session.elapsedSeconds/60)
     );
 
-    const passiveLoop=detectPassiveScrollLoop({
+    const passiveFeatures={
       sessionSeconds:session.elapsedSeconds,
       repeatedOpens:session.recentReopens,
       recentReopens:session.recentReopens,
       passiveSeconds:session.passiveSeconds,
       interactionRate,
       scrollEventsPerMinute,
-      scrollBursts:sample.scrollBursts,
-      scrollDirectionChanges:sample.scrollDirectionChanges,
-      scrollDistancePerMinute:sample.scrollDistancePerMinute,
       contextSwitches:session.contextSwitches,
       declaredIntentMatch:session.intentMatch,
       outsideIntent:session.outsideIntent,
       lateNightRisk:session.lateNightRisk,
       notificationLaunch:session.notificationLaunch,
-      previousInterventionIgnored:session.previousInterventionIgnored
-    });
+      previousInterventionIgnored:session.previousInterventionIgnored,
+      ...(sample.scrollBursts===undefined?{}:{scrollBursts:sample.scrollBursts}),
+      ...(sample.scrollDirectionChanges===undefined?{}:{scrollDirectionChanges:sample.scrollDirectionChanges}),
+      ...(sample.scrollDistancePerMinute===undefined?{}:{scrollDistancePerMinute:sample.scrollDistancePerMinute})
+    };
+    const passiveLoop=detectPassiveScrollLoop(passiveFeatures);
 
     let assessment=assessAttention({
       sessionSeconds:session.elapsedSeconds,
@@ -278,12 +280,14 @@ export class AttentionRuntime {
   }
 
   respond(intervention:string,outcome:"continued"|"exited"){
-    this.config.profile.attemptsByIntervention[intervention]=
+    const key=normalizeIntervention(intervention);
+    if(!key)return;
+    this.config.profile.attemptsByIntervention[key]=
       (this.config.profile.attemptsByIntervention[intervention]??0)+1;
 
     if(outcome==="exited"){
-      this.config.profile.successByIntervention[intervention]=
-        (this.config.profile.successByIntervention[intervention]??0)+1;
+      this.config.profile.successByIntervention[key]=
+        (this.config.profile.successByIntervention[key]??0)+1;
     }
 
     this.summary=recordInterventionOutcome(this.summary,outcome==="exited");
@@ -301,6 +305,11 @@ export class AttentionRuntime {
 
 function clamp(value:number,min=0,max=1){
   return Math.min(max,Math.max(min,value));
+}
+
+function normalizeIntervention(value:string):Intervention|undefined{
+  const allowed:Intervention[]=["none","awareness","deliberation","pause","delay","commitment","lock"];
+  return allowed.includes(value as Intervention)?value as Intervention:undefined;
 }
 
 function timeOfDay(date:Date):"morning"|"day"|"evening"|"night"{
