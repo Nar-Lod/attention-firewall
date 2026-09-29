@@ -43,3 +43,22 @@ export function budgetStatus(intent:IntentEnvelope,elapsedSeconds:number):"none"
  if(ratio>=.8)return "approaching";
  return "none";
 }
+
+
+export function sanitizeIntent(value:unknown):IntentEnvelope|undefined{
+ if(!value||typeof value!=="object")return undefined;
+ const v=value as Record<string,unknown>;
+ if(typeof v.id!=="string"||v.id.length<1||v.id.length>80)return undefined;
+ if(typeof v.label!=="string"||v.label.length<1||v.label.length>120)return undefined;
+ if(!["work","study","communication","entertainment","rest","other"].includes(String(v.purpose)))return undefined;
+ if(!Array.isArray(v.targetDomains)||v.targetDomains.length>30)return undefined;
+ const targetDomains=v.targetDomains.map(x=>typeof x==="string"?normalizeDomain(x):"").filter(Boolean);
+ if(targetDomains.length!==v.targetDomains.length)return undefined;
+ const startedAt=typeof v.startedAt==="number"&&Number.isFinite(v.startedAt)?v.startedAt:Date.now();
+ const budgetMinutes=v.budgetMinutes===undefined?undefined:(Number.isInteger(v.budgetMinutes)&&v.budgetMinutes>=1&&v.budgetMinutes<=240?v.budgetMinutes:undefined);
+ return {id:v.id,label:v.label,purpose:v.purpose as IntentPurpose,targetDomains,startedAt,budgetMinutes};
+}
+
+export function intentToSessionTarget(intent:IntentEnvelope|undefined):string{
+ return intent?.targetDomains[0]??"local";
+}
