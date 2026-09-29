@@ -12,7 +12,7 @@ export async function POST(){
  if(!databaseUrl||!flowSecret||!rpID||!origin)return NextResponse.json({error:"service_not_configured"},{status:503});
 
  const accountId=randomUUID();
- const user={id:accountId,username:"af_"+randomUUID().replaceAll("-","").slice(0,20),webauthnUserID:"af_user_"+randomUUID().replaceAll("-","")};
+ const user={id:accountId,username:"af_"+accountId.replaceAll("-","").slice(0,20),webauthnUserID:"af_user_"+randomUUID().replaceAll("-","")};
  const store=new PostgresAuthStore(databaseUrl);
  try{
   const result=await beginRegistration(user,store,store,{rpName:"Attention Firewall",rpID,origin,challengeTtlMs:5*60_000});
