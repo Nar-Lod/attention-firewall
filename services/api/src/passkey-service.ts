@@ -28,7 +28,7 @@ export interface PasskeyConfig{
 }
 
 export class DisabledChallengeStore implements ChallengeStore{
- async put():Promise<void>{throw new Error("challenge persistence not configured")}
+ async saveChallenge():Promise<void>{throw new Error("challenge persistence not configured")}
  async take():Promise<string|null>{throw new Error("challenge persistence not configured")}
 }
 
