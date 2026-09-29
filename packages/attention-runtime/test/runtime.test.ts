@@ -46,6 +46,24 @@ describe("AttentionRuntime",()=>{
    const r=rt.sample({elapsedSeconds:300,interactions:20,scrolls:40,domain:"example.com"});
    expect(r.intervention).toBe("awareness");
   });
+ it("raises awareness when the local intent budget is approaching",()=>{
+  const cfg=config();cfg.intent={...cfg.intent!,budgetMinutes:2};
+  const rt=new AttentionRuntime(cfg);rt.begin("example.com");
+  const r=rt.sample({elapsedSeconds:100,interactions:20,scrolls:40,domain:"example.com"});
+  expect(r.intervention).toBe("awareness");
+ });
+ it("pauses after the local intent budget is exceeded",()=>{
+  const cfg=config();cfg.intent={...cfg.intent!,budgetMinutes:1};
+  const rt=new AttentionRuntime(cfg);rt.begin("example.com");
+  const r=rt.sample({elapsedSeconds:70,interactions:2,scrolls:4,domain:"example.com"});
+  expect(r.intervention).toBe("pause");
+ });
+ it("applies a local site rule without changing cloud state",()=>{
+  const cfg=config();cfg.rules=[{id:"r1",target:"site",value:"example.com",enabled:true,minimumIntervention:"lock"}];
+  const rt=new AttentionRuntime(cfg);rt.begin("example.com");
+  const r=rt.sample({elapsedSeconds:60,interactions:0,scrolls:50,domain:"example.com"});
+  expect(r.intervention).toBe("lock");
+ });
  it("times out inactive sessions",()=>{
   let now=1000;
   const rt=new AttentionRuntime(config(),{now:()=>now});
