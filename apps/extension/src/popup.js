@@ -1,0 +1,1 @@
+// Development placeholder. The TypeScript build emits the production popup script from popup.ts.
