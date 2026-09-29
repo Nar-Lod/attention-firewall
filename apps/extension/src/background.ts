@@ -6,7 +6,7 @@ import {buildAttentionTwin} from "@attention-firewall/personalization-engine";
 import {validateRules,type PolicyRule} from "@attention-firewall/policy-engine";
 import {DEFAULT_HISTORY,addDailySeconds,emptyDay,recordInterventionOutcome,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
-interface ActivitySample{type:"ACTIVITY_SAMPLE";scrollCount:number;interactionCount:number;elapsedSeconds:number;domain:string}
+interface ActivitySample{type:"ACTIVITY_SAMPLE";protocolVersion:1;scrollCount:number;interactionCount:number;elapsedSeconds:number;domain:string;scrollBursts?:number;scrollDirectionChanges?:number;scrollDistancePerMinute?:number}
 interface SessionStart{type:"SESSION_START";domain:string}
 interface SessionRuntimeState{domain:string;runtime:AttentionRuntime;lastInterventionAt:number;contextSwitches:number}
 
@@ -152,6 +152,9 @@ async function handleActivity(tabId:number,message:ActivitySample){
   elapsedSeconds:message.elapsedSeconds,
   interactions:message.interactionCount,
   scrolls:message.scrollCount,
+  scrollBursts:message.scrollBursts,
+  scrollDirectionChanges:message.scrollDirectionChanges,
+  scrollDistancePerMinute:message.scrollDistancePerMinute,
   domain:message.domain,
   contextSwitches:current.contextSwitches,
   lateNightRisk:hour>=22||hour<6?1:0
@@ -247,7 +250,10 @@ function isActivityMessage(value:unknown):value is ActivitySample{
    domain:v.domain,
    elapsedSeconds:v.elapsedSeconds,
    interactions:v.interactionCount,
-   scrolls:v.scrollCount
+   scrolls:v.scrollCount,
+   scrollBursts:v.scrollBursts,
+   scrollDirectionChanges:v.scrollDirectionChanges,
+   scrollDistancePerMinute:v.scrollDistancePerMinute
   });
   return sample.platform==="web"&&typeof sample.domain==="string";
  }catch{return false}
