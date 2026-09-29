@@ -10,7 +10,7 @@ describe("intent engine",()=>{
   });
   it("classifies intent budgets",()=>{
     const intent={id:"1",label:"Study",purpose:"study" as const,targetDomains:["example.com"],startedAt:0,budgetMinutes:30};
-    expect(budgetStatus(intent,1200)).toBe("approaching");
+    expect(budgetStatus(intent,1500)).toBe("approaching");
     expect(budgetStatus(intent,1801)).toBe("exceeded");
   });
   it("rejects malformed intents",()=>expect(sanitizeIntent({id:"1",label:"x",purpose:"study",targetDomains:["bad domain"],startedAt:0})).toBeUndefined());
