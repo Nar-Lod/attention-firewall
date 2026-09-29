@@ -8,6 +8,7 @@ import {EncryptedIndexedDbStore} from "@attention-firewall/secure-browser-store"
 import {normalizeDomain} from "@attention-firewall/intent-engine";
 import type {InterventionProfile} from "@attention-firewall/attention-engine";
 import type {PolicyRule} from "@attention-firewall/policy-engine";
+import type {Commitment} from "@attention-firewall/commitment-engine";
 
 type Purpose="work"|"study"|"communication"|"entertainment"|"rest"|"other";
 type Mode="adaptive"|"strict";
@@ -23,6 +24,7 @@ type Profile={
  version:1;
  intent?:LocalIntent;
  rules:PolicyRule[];
+ commitments:Commitment[];
  interventionProfile:InterventionProfile;
  privacy:{telemetryOptIn:boolean;researchOptIn:boolean};
 };
@@ -30,6 +32,7 @@ type Profile={
 const blankProfile:Profile={
  version:1,
  rules:[],
+ commitments:[],
  interventionProfile:{successByIntervention:{},attemptsByIntervention:{}},
  privacy:{telemetryOptIn:false,researchOptIn:false}
 };
@@ -45,6 +48,9 @@ export default function Home(){
  const [domains,setDomains]=useState("docs.example.com");
  const [budget,setBudget]=useState("30");
  const [mode,setMode]=useState<Mode>("adaptive");
+ const [commitDomain,setCommitDomain]=useState("");
+ const [commitMinutes,setCommitMinutes]=useState("30");
+ const [commitLevel,setCommitLevel]=useState<Commitment["minimumIntervention"]>("commitment");
  const [runtime,setRuntime]=useState<AttentionRuntime|null>(null);
  const [assessment,setAssessment]=useState<{score:number;state:string;reasons:string[]}|null>(null);
  const [decision,setDecision]=useState("none");
@@ -104,6 +110,7 @@ export default function Home(){
    protectionMode:mode,
    profile:profile.interventionProfile,
    rules:profile.rules,
+   commitments:profile.commitments,
    attentionTwin:twin,
    intent:currentIntent
   },undefined,summary);
@@ -137,6 +144,32 @@ export default function Home(){
    interventionProfile:runtime.getInterventionProfile()
   };
   void persistState(nextProfile,pruneHistory(upsertDay(history,result.dailySummary),30));
+ };
+
+ const startCommitment=async()=>{
+  const target=normalizeDomain(commitDomain);
+  const minutes=Number(commitMinutes);
+  if(!target||!Number.isInteger(minutes)||minutes<1||minutes>240){
+   setStatus("Enter a valid site and commitment length.");
+   return;
+  }
+  const now=Date.now();
+  const commitment:Commitment={
+   id:"commit_"+crypto.randomUUID(),
+   label:"Protect "+target,
+   targetDomains:[target],
+   startAt:now,
+   endAt:now+minutes*60_000,
+   minimumIntervention:commitLevel,
+   changeCooldownMinutes:Math.min(60,minutes),
+   createdAt:now
+  };
+  const nextProfile:Profile={...profile,commitments:[...profile.commitments,commitment].slice(-50)};
+  setProfile(nextProfile);
+  await profileStore.set(nextProfile);
+  if(runtime)runtime.setConfig({commitments:nextProfile.commitments});
+  setCommitDomain("");
+  setStatus("Commitment started locally.");
  };
 
  const respond=(outcome:"exited"|"continued")=>{
@@ -194,7 +227,18 @@ export default function Home(){
     <div className="label">ATTENTION TWIN</div>
     <h2>{twin.preferredIntervention}</h2>
     <p>{twin.sampleDays} local days · {twin.highRiskHours.length?twin.highRiskHours.map(h=>String(h).padStart(2,"0")+":00").join(", "):"high-risk windows not learned yet"}</p>
-    <p>{recoveredMinutes} min attention recovered</p>
+    <p>{recoveredMinutes} min attention recovered</p><p>{profile.commitments.filter(x=>x.endAt>Date.now()).length} active local commitments</p>
+   </article>
+
+   <article className="card">
+    <div className="label">COMMITMENT · LOCAL</div>
+    <input value={commitDomain} onChange={e=>setCommitDomain(e.target.value)} placeholder="Site to protect, e.g. social.example"/>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+      <input value={commitMinutes} onChange={e=>setCommitMinutes(e.target.value)} type="number" min="1" max="240" placeholder="Minutes"/>
+      <select value={commitLevel} onChange={e=>setCommitLevel(e.target.value as Commitment["minimumIntervention"])}><option value="pause">Pause</option><option value="delay">Delay</option><option value="commitment">Commitment</option><option value="lock">Lock</option></select>
+    </div>
+    <p>Set the rule while calm. It will be enforced locally until the commitment expires.</p>
+    <button onClick={startCommitment}>Start commitment</button>
    </article>
 
    <article className="card recovery">
