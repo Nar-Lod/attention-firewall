@@ -111,7 +111,7 @@ document.getElementById("saveRule")?.addEventListener("click",async()=>{
   return;
  }
  const stored=await chrome.storage.local.get("rules");
- const rules=Array.isArray(stored.rules)?stored.rules:readonly [];
+ const rules=Array.isArray(stored.rules)?stored.rules:[];
  const next=[...rules.filter((rule:unknown)=>typeof rule==="object"&&rule!==null&&(rule as Record<string,unknown>).value!==value),
   {id:"rule_"+crypto.randomUUID(),target:"site",value,enabled:true,minimumIntervention:ruleLevelEl.value}
  ].slice(0,100);
