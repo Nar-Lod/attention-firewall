@@ -2,6 +2,7 @@ import type {AttentionAssessment,Intervention,InterventionProfile} from "@attent
 import type {IntentEnvelope} from "@attention-firewall/intent-engine";
 import type {PolicyRule} from "@attention-firewall/policy-engine";
 import type {AttentionTwin} from "@attention-firewall/personalization-engine";
+import type {Commitment} from "@attention-firewall/commitment-engine";
 import type {DailySummary} from "@attention-firewall/local-analytics";
 
 export type ProtectionMode="adaptive"|"strict";
@@ -30,6 +31,7 @@ export interface RuntimeConfig{
   profile:InterventionProfile;
   intent?:IntentEnvelope;\n  rules:PolicyRule[];
   attentionTwin?:AttentionTwin;
+  commitments:Commitment[];
 }
 
 export interface RuntimeDecision{
