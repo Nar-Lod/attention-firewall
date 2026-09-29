@@ -1,5 +1,5 @@
 import {encryptJson} from "@attention-firewall/security-core";
-import {getLocalState,setLocalState} from "./local-state.js";
+import {appendSecurityEvent,getLocalState,setLocalState} from "./local-state.js";
 
 type Purpose="work"|"study"|"communication"|"entertainment"|"rest"|"other";
 interface LocalIntent{id:string;label:string;targetDomains:string[];startedAt:number;purpose:Purpose;budgetMinutes?:number}
@@ -171,6 +171,7 @@ document.getElementById("exportLocal")?.addEventListener("click",async()=>{
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+  await appendSecurityEvent("encrypted_export_created","success");
   statusEl.textContent="Encrypted local export created.";
  }catch{
   statusEl.textContent="Export failed. No data was uploaded.";
