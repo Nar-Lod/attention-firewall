@@ -34,7 +34,8 @@ const blankProfile:Profile={
  rules:[],
  commitments:[],
  interventionProfile:{successByIntervention:{},attemptsByIntervention:{}},
- privacy:{telemetryOptIn:false,researchOptIn:false}
+ privacy:{telemetryOptIn:false,researchOptIn:false},
+ protectionMode:"adaptive"
 };
 
 export default function Home(){
@@ -103,7 +104,7 @@ export default function Home(){
    purpose,
    targetDomains,
    startedAt,
-   budgetMinutes:Number.isFinite(parsedBudget)&&parsedBudget>=1&&parsedBudget<=240?Math.floor(parsedBudget):undefined
+   ...(Number.isFinite(parsedBudget)&&parsedBudget>=1&&parsedBudget<=240?{budgetMinutes:Math.floor(parsedBudget)}:{} )
   };
 
   const rt=new AttentionRuntime({
