@@ -33,6 +33,13 @@
             android:layout_height="wrap_content" />
 
         <Button
+            android:id="@+id/prepareLauncher"
+            android:text="Prepare launcher mode (no takeover)"
+            android:layout_marginTop="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <Button
             android:id="@+id/hardProtection"
             android:text="Open Hard Protection settings"
             android:layout_marginTop="12dp"
