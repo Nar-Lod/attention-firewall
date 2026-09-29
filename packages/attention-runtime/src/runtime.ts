@@ -4,6 +4,7 @@ import {recommendRecovery} from "@attention-firewall/recovery-engine";
 import type {RuntimeConfig,RuntimeDecision,RuntimeSession} from "./types.js";
 import {applyPolicy} from "@attention-firewall/policy-engine";
 import {budgetStatus,matchDomain,type IntentEnvelope} from "@attention-firewall/intent-engine";
+import {applyCommitments} from "@attention-firewall/commitment-engine";
 
 const sessionTimeoutMs=5*60_000;
 
@@ -114,7 +115,8 @@ export class AttentionRuntime{
    selected={...selected,intervention:"awareness",reason:"Local Attention Twin indicates a high-risk attention window."};
   }
   const policyIntervention=applyPolicy(selected.intervention,this.config.rules,{domain:sample.domain??"web",minuteOfDay:currentHour*60+new Date(now).getMinutes()});
-  const intervention=cooldownActive?"none":policyIntervention;
+  const commitmentIntervention=applyCommitments(policyIntervention,this.config.commitments,sample.domain??"web",now);
+  const intervention=cooldownActive?"none":commitmentIntervention;
 
   if(intervention!=="none")session.lastInterventionAt=now;
 
