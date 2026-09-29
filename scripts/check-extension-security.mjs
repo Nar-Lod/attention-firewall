@@ -34,5 +34,7 @@ for(const file of walk(root.pathname)){
   throw new Error("Unsafe API pattern found in "+file);
  }
  if(/<script[^>]+src=["']https?:\/\//i.test(source))throw new Error("Remote script reference found in "+file);
+ if(/chrome\.permissions\.request\(\{[^}]*origins:\s*\[\s*["']https:\/\/\*\/\*["']/.test(source))throw new Error("Runtime broad host permission request found in "+file);
+ if(/matches:\s*\[\s*["']https:\/\/\*\/\*["']/.test(source))throw new Error("Broad content-script match found in "+file);
 }
 console.log("Extension security checks passed.");
