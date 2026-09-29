@@ -6,27 +6,27 @@
 - [x] data inventory
 - [x] threat model
 - [x] invention specification
-- [ ] monorepo tooling
+- [x] monorepo tooling
 
 ## Phase 1 — attention engine
-- [ ] intent model
-- [ ] feature model
-- [ ] attention state classifier
-- [ ] friction ladder
-- [ ] intervention policy
-- [ ] unit tests
+- [x] intent model
+- [x] feature model
+- [x] attention state classifier
+- [x] friction ladder
+- [x] intervention policy
+- [x] unit tests
 
 ## Phase 2 — browser MVP
-- [ ] extension shell
-- [ ] local state
-- [ ] domain classification
-- [ ] intervention overlay
-- [ ] recovery flow
+- [x] extension shell
+- [x] local state
+- [x] domain classification
+- [x] intervention overlay
+- [x] recovery flow
 - [ ] no-cloud behavioral mode
 
 ## Phase 3 — web dashboard
 - [ ] local dashboard
-- [ ] privacy center
+- [x] privacy center
 - [ ] intention setup
 - [ ] intervention configuration
 
