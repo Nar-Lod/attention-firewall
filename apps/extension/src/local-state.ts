@@ -1,5 +1,7 @@
 import {EncryptedIndexedDbStore} from "@attention-firewall/secure-browser-store";
 import {sweepLocalState} from "@attention-firewall/data-lifecycle";
+import type {SecurityEvent} from "@attention-firewall/security-audit";
+import {createSecurityEvent} from "@attention-firewall/security-audit";
 import type {DailyHistory,DailySummary} from "@attention-firewall/local-analytics";
 import type {InterventionProfile} from "@attention-firewall/attention-engine";
 import type {PolicyRule} from "@attention-firewall/policy-engine";
@@ -16,6 +18,7 @@ export interface ExtensionState{
  rules:PolicyRule[];
  commitments:Commitment[];
  privacy:{telemetryOptIn:boolean;researchOptIn:boolean};
+ securityEvents:SecurityEvent[];
 }
 
 const defaults:ExtensionState={
@@ -24,7 +27,8 @@ const defaults:ExtensionState={
  interventionProfile:{successByIntervention:{},attemptsByIntervention:{}},
  rules:[],
  commitments:[],
- privacy:{telemetryOptIn:false,researchOptIn:false}
+ privacy:{telemetryOptIn:false,researchOptIn:false},
+ securityEvents:[]
 };
 
 const store=new EncryptedIndexedDbStore<ExtensionState>(
