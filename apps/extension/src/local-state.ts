@@ -93,6 +93,12 @@ export async function setLocalState(patch:Partial<ExtensionState>):Promise<Exten
  return next;
 }
 
+export async function appendSecurityEvent(type:SecurityEvent["type"],outcome:SecurityEvent["outcome"]):Promise<ExtensionState>{
+ const state=await getLocalState();
+ const securityEvents=[createSecurityEvent(type,outcome),...state.securityEvents].slice(0,100);
+ return setLocalState({securityEvents});
+}
+
 export async function clearLocalState():Promise<void>{
  await store.clear();
  await chrome.storage.local.remove([
