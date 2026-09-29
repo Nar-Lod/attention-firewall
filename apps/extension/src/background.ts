@@ -2,7 +2,7 @@ import {AttentionRuntime} from "@attention-firewall/attention-runtime";
 import {DEFAULT_HISTORY,emptyDay,recordIntervention,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
 interface LocalIntent{label:string;targetDomains:string[];startedAt:number;purpose?:"work"|"study"|"communication"|"entertainment"|"rest"|"other";budgetMinutes?:number}
-interface LocalProfile{successByIntervention:Record<string,number>;attemptsByIntervention:Record<string,number>}
+interface LocalProfile{successByIntervention:Record<string,number>;attemptsByIntervention:Record<string,number>;rules:unknown[]}
 interface ActivitySample{type:"ACTIVITY_SAMPLE";scrollCount:number;interactionCount:number;elapsedSeconds:number;domain:string}
 interface SessionRuntimeState{domain:string;runtime:AttentionRuntime;lastInterventionAt:number}
 
@@ -89,9 +89,9 @@ async function unregisterDetector(){
 
 async function handleActivity(tabId:number,message:ActivitySample){
  const state=runtimes.get(tabId);
- const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","dailyHistory"]);
+ const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","dailyHistory","rules"]);
  const intent=stored.currentIntent as LocalIntent|undefined;
- const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{}};
+ const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{},rules:[]};
  const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
 
  let current=state;
@@ -146,7 +146,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
 
 async function handleResponse(intervention:string,outcome:"continued"|"exited"){
  const stored=await chrome.storage.local.get(["interventionProfile","dailySummary","dailyHistory"]);
- const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{}};
+ const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{},rules:[]};
  profile.attemptsByIntervention[intervention]=(profile.attemptsByIntervention[intervention]??0)+1;
  if(outcome==="exited")profile.successByIntervention[intervention]=(profile.successByIntervention[intervention]??0)+1;
 
