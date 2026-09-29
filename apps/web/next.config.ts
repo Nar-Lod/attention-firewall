@@ -9,7 +9,7 @@ const securityHeaders=[
   {key:"Content-Security-Policy",value:"default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; upgrade-insecure-requests"}
 ];
 
-const nextConfig:NextConfig={
+const nextConfig:NextConfig={\n  transpilePackages:["@attention-firewall/api"],
   poweredByHeader:false,
   async headers(){return [{source:"/(.*)",headers:securityHeaders}];}
 };
