@@ -134,7 +134,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
    rules:safeRules(stored.rules),
    attentionTwin,
    commitments:parseCommitments(stored.commitments),
-   intent:intent as IntentEnvelope|undefined
+   ...(intent?{intent}: {})
   },undefined,typeof stored.dailySummary==="object"&&stored.dailySummary?stored.dailySummary:undefined)};
   runtimes.set(tabId,current);
   current.runtime.begin(message.domain);
@@ -149,7 +149,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
   rules:safeRules(stored.rules),
   attentionTwin,
   commitments:parseCommitments(stored.commitments),
-  intent:intent as IntentEnvelope|undefined
+  ...(intent?{intent}: {})
  });
  if(typeof stored.dailySummary==="object"&&stored.dailySummary){
   current.runtime.setSummary(stored.dailySummary);
@@ -161,12 +161,12 @@ async function handleActivity(tabId:number,message:ActivitySample){
   elapsedSeconds:message.elapsedSeconds,
   interactions:message.interactionCount,
   scrolls:message.scrollCount,
-  scrollBursts:message.scrollBursts,
-  scrollDirectionChanges:message.scrollDirectionChanges,
-  scrollDistancePerMinute:message.scrollDistancePerMinute,
   domain:message.domain,
   contextSwitches:current.contextSwitches,
-  lateNightRisk:hour>=22||hour<6?1:0
+  lateNightRisk:hour>=22||hour<6?1:0,
+  ...(message.scrollBursts===undefined?{}:{scrollBursts:message.scrollBursts}),
+  ...(message.scrollDirectionChanges===undefined?{}:{scrollDirectionChanges:message.scrollDirectionChanges}),
+  ...(message.scrollDistancePerMinute===undefined?{}:{scrollDistancePerMinute:message.scrollDistancePerMinute})
  });
 
  const existingHistory=stored.dailyHistory;
