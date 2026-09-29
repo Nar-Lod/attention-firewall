@@ -1,12 +1,20 @@
 import {describe,expect,it} from "vitest";
-import {RUNTIME_PROTOCOL_VERSION,validateRuntimeSample} from "../src/index.js";
+import {validateRuntimeSample} from "../src/index.js";
 
 describe("runtime protocol",()=>{
- it("validates bounded platform samples",()=>{
-  const r=validateRuntimeSample({protocolVersion:RUNTIME_PROTOCOL_VERSION,platform:"web",domain:"example.com",elapsedSeconds:15,interactions:2,scrolls:10});
-  expect(r.platform).toBe("web");
- });
- it("rejects unbounded samples",()=>{
-  expect(()=>validateRuntimeSample({protocolVersion:1,platform:"web",elapsedSeconds:999,interactions:1,scrolls:1})).toThrow();
- });
+  it("accepts bounded web samples",()=>{
+    const result=validateRuntimeSample({
+      protocolVersion:1,platform:"web",domain:"example.com",
+      elapsedSeconds:15,interactions:2,scrolls:20,
+      scrollBursts:3,scrollDirectionChanges:1,scrollDistancePerMinute:900
+    });
+    expect(result.domain).toBe("example.com");
+  });
+
+  it("rejects unbounded values",()=>{
+    expect(()=>validateRuntimeSample({
+      protocolVersion:1,platform:"web",domain:"example.com",
+      elapsedSeconds:301,interactions:0,scrolls:0
+    })).toThrow();
+  });
 });
