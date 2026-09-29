@@ -4,7 +4,7 @@ import {sanitizeIntent,type IntentEnvelope} from "@attention-firewall/intent-eng
 import {validateRuntimeSample} from "@attention-firewall/runtime-protocol";
 import {buildAttentionTwin} from "@attention-firewall/personalization-engine";
 import {validateRules,type PolicyRule} from "@attention-firewall/policy-engine";
-import {clearLocalState,getLocalState,setLocalState} from "./local-state.js";
+import {appendSecurityEvent,clearLocalState,getLocalState,setLocalState} from "./local-state.js";
 import {DEFAULT_HISTORY,addDailySeconds,emptyDay,recordInterventionOutcome,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
 interface ActivitySample{type:"ACTIVITY_SAMPLE";protocolVersion:1;scrollCount:number;interactionCount:number;elapsedSeconds:number;domain:string;scrollBursts?:number;scrollDirectionChanges?:number;scrollDistancePerMinute?:number}
@@ -66,6 +66,7 @@ async function enableWebProtection(){
   return;
  }
  await chrome.storage.local.set({webProtectionEnabled:true});
+ await appendSecurityEvent("permission_changed","success");
  await registerDetector();
 }
 
@@ -73,6 +74,7 @@ async function disableWebProtection(){
  await unregisterDetector();
  await chrome.permissions.remove({origins:["https://*/*"]}).catch(()=>false);
  await chrome.storage.local.set({webProtectionEnabled:false});
+ await appendSecurityEvent("permission_changed","success");
  runtimes.clear();
  pendingRecovery.clear();
 }
@@ -88,6 +90,7 @@ async function handlePermissionRemoved(){
  const current=await chrome.storage.local.get("webProtectionEnabled");
  if(current.webProtectionEnabled===true){
   await chrome.storage.local.set({webProtectionEnabled:false});
+  await appendSecurityEvent("permission_changed","success");
  }
  await unregisterDetector();
  runtimes.clear();
