@@ -1,5 +1,4 @@
-import {Pool,type PoolClient} from "pg";
-import type {AuthenticatorTransportFuture} from "@simplewebauthn/server";
+import {Pool} from "pg";
 import type {StoredPasskey} from "@attention-firewall/auth-core";
 import type {VaultRepository} from "./vault.js";
 import type {ChallengeStore} from "./passkey-service.js";
