@@ -1,8 +1,17 @@
-import {describe,expect,it} from "vitest";import {normalizeDomain,matchDomain,budgetStatus} from "../src/index.js";
-const intent={id:"1",label:"study",purpose:"study" as const,targetDomains:["docs.google.com","scholar.google.com"],startedAt:0,budgetMinutes:30};
+import {describe,expect,it} from "vitest";
+import {budgetStatus,matchDomain,normalizeDomain,sanitizeIntent} from "../src/index.js";
+
 describe("intent engine",()=>{
- it("normalizes domains without preserving URL paths",()=>expect(normalizeDomain("https://www.example.com/path?q=x")).toBe("example.com"));
- it("matches a subdomain without uploading or storing page data",()=>expect(matchDomain({...intent,targetDomains:["example.com"]},"learn.example.com").matches).toBe(true));
- it("detects outside-intent activity",()=>expect(matchDomain(intent,"social.example.net").reason).toBe("outside-target"));
- it("detects budget thresholds locally",()=>{expect(budgetStatus(intent,25*60)).toBe("approaching");expect(budgetStatus(intent,31*60)).toBe("exceeded");});
+  it("normalizes domains safely",()=>expect(normalizeDomain("https://www.Example.com/path")).toBe("example.com"));
+  it("matches subdomains",()=>{
+    const intent={id:"1",label:"Study",purpose:"study" as const,targetDomains:["example.com"],startedAt:0};
+    expect(matchDomain(intent,"docs.example.com").matches).toBe(true);
+    expect(matchDomain(intent,"other.test").matches).toBe(false);
+  });
+  it("classifies intent budgets",()=>{
+    const intent={id:"1",label:"Study",purpose:"study" as const,targetDomains:["example.com"],startedAt:0,budgetMinutes:30};
+    expect(budgetStatus(intent,1200)).toBe("approaching");
+    expect(budgetStatus(intent,1801)).toBe("exceeded");
+  });
+  it("rejects malformed intents",()=>expect(sanitizeIntent({id:"1",label:"x",purpose:"study",targetDomains:["bad domain"],startedAt:0})).toBeUndefined());
 });
