@@ -19,6 +19,13 @@ export class AttentionRuntime{
   Object.assign(this.config,config);
  }
 
+ reopen(){
+  if(this.session){
+   this.session.recentReopens=Math.min(this.session.recentReopens+1,20);
+   this.session.lastActivityAt=this.clock.now();
+  }
+ }
+
  setSummary(summary:DailySummary){
   this.summary=summary.date===todayKey()?summary:emptyDay();
  }
