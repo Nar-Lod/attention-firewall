@@ -1,23 +1,30 @@
-import {assessAttention,chooseIntervention,type InterventionProfile} from "@attention-firewall/attention-engine";
+import {assessAttention,chooseIntervention} from "@attention-firewall/attention-engine";
 import {addDailySeconds,emptyDay,recordDriftEpisode,recordIntervention,todayKey,type DailySummary} from "@attention-firewall/local-analytics";
 import {recommendRecovery} from "@attention-firewall/recovery-engine";
-import type {ProtectionMode,RuntimeConfig,RuntimeDecision,RuntimeSession} from "./types.js";
+import type {RuntimeConfig,RuntimeDecision,RuntimeSession} from "./types.js";
 
 const sessionTimeoutMs=5*60_000;
 
 export class AttentionRuntime{
  private session:RuntimeSession|null=null;
- private summary:DailySummary=emptyDay();
+ private summary:DailySummary;
 
- constructor(private readonly config:RuntimeConfig,private readonly clock:{now():number}={now:()=>Date.now()}){}
+ constructor(private readonly config:RuntimeConfig,private readonly clock:{now():number}={now:()=>Date.now()},initialSummary:DailySummary=emptyDay()){
+  this.summary=initialSummary.date===todayKey()?initialSummary:emptyDay();
+ }
+
+ setSummary(summary:DailySummary){
+  this.summary=summary.date===todayKey()?summary:emptyDay();
+ }
+
+ getSummary():DailySummary{return this.summary;}
 
  begin(target:string):RuntimeSession{
   const now=this.clock.now();
   this.session={
-   id:target+"_"+now.toString(36),
-   startedAt:now,lastActivityAt:now,elapsedSeconds:0,passiveSeconds:0,recentReopens:0,
-   interactionCount:0,scrollCount:0,contextSwitches:0,intentMatch:1,outsideIntent:false,
-   lateNightRisk:0,notificationLaunch:false,previousInterventionIgnored:false,state:"active"
+   id:target+"_"+now.toString(36),startedAt:now,lastActivityAt:now,elapsedSeconds:0,passiveSeconds:0,
+   recentReopens:0,interactionCount:0,scrollCount:0,contextSwitches:0,intentMatch:1,
+   outsideIntent:false,lateNightRisk:0,notificationLaunch:false,previousInterventionIgnored:false,state:"active"
   };
   return this.session;
  }
@@ -27,6 +34,7 @@ export class AttentionRuntime{
   const session=this.session!;
   const now=this.clock.now();
   const elapsed=Math.max(0,Math.min(sample.elapsedSeconds,300));
+
   session.elapsedSeconds=Math.min(session.elapsedSeconds+elapsed,86_400);
   session.lastActivityAt=now;
   session.interactionCount=Math.min(session.interactionCount+Math.max(0,Math.min(sample.interactions,500)),10_000);
@@ -36,51 +44,57 @@ export class AttentionRuntime{
   session.outsideIntent=Boolean(sample.outsideIntent);
   session.notificationLaunch=Boolean(sample.notificationLaunch);
   session.lateNightRisk=Math.max(0,Math.min(sample.lateNightRisk??0,1));
-  if(sample.interactions===0&&sample.scrolls>0)session.passiveSeconds=Math.min(session.passiveSeconds+elapsed,session.elapsedSeconds);
+
+  if(sample.interactions===0&&sample.scrolls>0){
+   session.passiveSeconds=Math.min(session.passiveSeconds+elapsed,session.elapsedSeconds);
+  }
 
   const total=Math.max(1,session.interactionCount+session.scrollCount);
   const interactionRate=Math.min(1,session.interactionCount/total);
   const scrollEventsPerMinute=Math.min(120,session.scrollCount/Math.max(1,session.elapsedSeconds/60));
+
   const assessment=assessAttention({
    sessionSeconds:session.elapsedSeconds,repeatedOpens:session.recentReopens,recentReopens:session.recentReopens,
-   passiveSeconds:session.passiveSeconds,interactionRate,scrollEventsPerMinute,contextSwitches:session.contextSwitches,
-   declaredIntentMatch:session.intentMatch,outsideIntent:session.outsideIntent,
-   lateNightRisk:session.lateNightRisk,notificationLaunch:session.notificationLaunch,
-   previousInterventionIgnored:session.previousInterventionIgnored
+   passiveSeconds:session.passiveSeconds,interactionRate,scrollEventsPerMinute,
+   contextSwitches:session.contextSwitches,declaredIntentMatch:session.intentMatch,
+   outsideIntent:session.outsideIntent,lateNightRisk:session.lateNightRisk,
+   notificationLaunch:session.notificationLaunch,previousInterventionIgnored:session.previousInterventionIgnored
   });
-  const shouldCooldown=session.lastInterventionAt!==undefined&&now-session.lastInterventionAt<60_000;
-  const decision=chooseIntervention(assessment,this.config.profile,now,{strict:this.config.protectionMode==="strict"});
-  const intervention=shouldCooldown?"none":decision.intervention;
+
+  const cooldownActive=session.lastInterventionAt!==undefined&&now-session.lastInterventionAt<60_000;
+  const selected=chooseIntervention(assessment,this.config.profile,now,{strict:this.config.protectionMode==="strict"});
+  const intervention=cooldownActive?"none":selected.intervention;
+
   if(intervention!=="none")session.lastInterventionAt=now;
 
   let day=this.summary.date===todayKey()?this.summary:emptyDay();
-  day=sample.interactions===0&&sample.scrolls>0?addDailySeconds(day,"passiveSeconds",elapsed):addDailySeconds(day,"intentionalSeconds",sample.outsideIntent?0:elapsed);
+  day=sample.interactions===0&&sample.scrolls>0
+   ?addDailySeconds(day,"passiveSeconds",elapsed)
+   :addDailySeconds(day,"intentionalSeconds",sample.outsideIntent?0:elapsed);
   if(intervention!=="none")day=recordDriftEpisode(day);
   this.summary=day;
 
   const recovery=recommendRecovery({
-    minutesRecovered:Math.max(2,Math.round(elapsed/60)),
-    intentPurpose:this.config.intent?.purpose??"other",
-    timeOfDay:timeOfDay(new Date(now)),
-    consecutiveDriftEpisodes:day.driftEpisodes
+   minutesRecovered:Math.max(2,Math.round(elapsed/60)),
+   intentPurpose:this.config.intent?.purpose??"other",
+   timeOfDay:timeOfDay(new Date(now)),
+   consecutiveDriftEpisodes:day.driftEpisodes
   });
 
   return {session,assessment,intervention,recoveryMinutes:recovery[0]?.durationMinutes??2,dailySummary:day};
  }
 
  respond(intervention:string,outcome:"continued"|"exited"){
-  this.config.profile.attemptsByIntervention[intervention as keyof InterventionProfile["attemptsByIntervention"]]=(this.config.profile.attemptsByIntervention[intervention]??0)+1;
-  if(outcome==="exited")this.config.profile.successByIntervention[intervention as keyof InterventionProfile["successByIntervention"]]=(this.config.profile.successByIntervention[intervention]??0)+1;
+  this.config.profile.attemptsByIntervention[intervention]=(this.config.profile.attemptsByIntervention[intervention]??0)+1;
+  if(outcome==="exited")this.config.profile.successByIntervention[intervention]=(this.config.profile.successByIntervention[intervention]??0)+1;
   this.summary=recordIntervention(this.summary,outcome==="exited");
   if(outcome==="continued"&&this.session)this.session.previousInterventionIgnored=true;
  }
 
- complete(){
-  if(this.session)this.session.state="completed";
- }
+ complete(){if(this.session)this.session.state="completed";}
 
  isTimedOut(now=this.clock.now()):boolean{
-  return this.session!==null && now-this.session.lastActivityAt>sessionTimeoutMs;
+  return this.session!==null&&now-this.session.lastActivityAt>sessionTimeoutMs;
  }
 }
 
