@@ -6,13 +6,14 @@ export interface DailySummary{
  interventionsShown:number;
  interventionsAccepted:number;
  attentionRecoveredSeconds:number;
+ driftByHour?:number[];
 }
 export function todayKey(date=new Date()):string{
  const y=date.getFullYear();const m=String(date.getMonth()+1).padStart(2,"0");const d=String(date.getDate()).padStart(2,"0");
  return y+"-"+m+"-"+d;
 }
 export function emptyDay(date=todayKey()):DailySummary{
- return {date,intentionalSeconds:0,passiveSeconds:0,driftEpisodes:0,interventionsShown:0,interventionsAccepted:0,attentionRecoveredSeconds:0};
+ return {date,intentionalSeconds:0,passiveSeconds:0,driftEpisodes:0,interventionsShown:0,interventionsAccepted:0,attentionRecoveredSeconds:0,driftByHour:Array(24).fill(0)};
 }
 export function addDailySeconds(summary:DailySummary,field:"intentionalSeconds"|"passiveSeconds"|"attentionRecoveredSeconds",seconds:number):DailySummary{
  if(!Number.isFinite(seconds)||seconds<0)throw new Error("seconds must be non-negative");
@@ -27,7 +28,10 @@ export function recordInterventionOutcome(summary:DailySummary,accepted:boolean)
 export function recordIntervention(summary:DailySummary,accepted:boolean):DailySummary{
  return recordInterventionOutcome(recordInterventionShown(summary),accepted);
 }
-export function recordDriftEpisode(summary:DailySummary):DailySummary{
- return {...summary,driftEpisodes:Math.min(summary.driftEpisodes+1,1000)};
+export function recordDriftEpisode(summary:DailySummary,hour=new Date().getHours()):DailySummary{
+ const driftByHour=Array.isArray(summary.driftByHour)&&summary.driftByHour.length===24?[...summary.driftByHour]:Array(24).fill(0);
+ const safeHour=Math.max(0,Math.min(23,Math.floor(hour)));
+ driftByHour[safeHour]=Math.min(driftByHour[safeHour]+1,1000);
+ return {...summary,driftEpisodes:Math.min(summary.driftEpisodes+1,1000),driftByHour};
 }
 export * from "./history.js";
