@@ -60,7 +60,7 @@ export async function completeRegistration(
  config:PasskeyConfig,
  now=Date.now()
 ):Promise<StoredPasskey>{
- const challenge=await challenges.take("reg:"+user.id,now);
+ const challenge=await challenges.take("reg:"+userId,now);
  if(!challenge)throw new Error("invalid or expired challenge");
 
  const verification=await verifyRegistration(response,challenge,config.origin,config.rpID);
