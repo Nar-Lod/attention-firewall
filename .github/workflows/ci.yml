@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ! grep -RInE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude='*.lock' '(AKIA[0-9A-Z]{16}|BEGIN (RSA|EC|OPENSSH) PRIVATE KEY|github_pat_|ghp_[A-Za-z0-9_]{20,})' .
+          ! grep -RInE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude='*.lock' --exclude='ci.yml' '(AKIA[0-9A-Z]{16}|BEGIN (RSA|EC|OPENSSH) PRIVATE KEY|github_pat_|ghp_[A-Za-z0-9_]{20,})' .
 
   security-policy:
     runs-on: ubuntu-latest
