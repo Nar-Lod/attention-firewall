@@ -24,10 +24,10 @@ export function validateCommitment(value:unknown):Commitment{
  if(typeof v.id!=="string"||v.id.length<1||v.id.length>80)throw new Error("invalid id");
  if(typeof v.label!=="string"||v.label.length<1||v.label.length>120)throw new Error("invalid label");
  if(!Array.isArray(v.targetDomains)||v.targetDomains.length<1||v.targetDomains.length>30)throw new Error("invalid targets");
- if(!Number.isFinite(v.startAt)||!Number.isFinite(v.endAt)||Number(v.endAt)<=Number(v.startAt))throw new Error("invalid window");
+ if(typeof v.startAt!=="number"||!Number.isFinite(v.startAt)||typeof v.endAt!=="number"||!Number.isFinite(v.endAt)||v.endAt<=v.startAt)throw new Error("invalid window");
  if(typeof v.minimumIntervention!=="string"||!["awareness","deliberation","pause","delay","commitment","lock"].includes(v.minimumIntervention))throw new Error("invalid intervention");
  if(!Number.isInteger(v.changeCooldownMinutes)||Number(v.changeCooldownMinutes)<1||Number(v.changeCooldownMinutes)>1440)throw new Error("invalid cooldown");
- if(!Number.isFinite(v.createdAt)||Number(v.createdAt)>Date.now()+60_000)throw new Error("invalid createdAt");
+ if(typeof v.createdAt!=="number"||!Number.isFinite(v.createdAt)||v.createdAt>Date.now()+60_000)throw new Error("invalid createdAt");
  return v as unknown as Commitment;
 }
 
