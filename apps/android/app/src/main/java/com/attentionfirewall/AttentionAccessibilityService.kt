@@ -10,6 +10,8 @@ import android.view.accessibility.AccessibilityEvent
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import org.json.JSONArray
+import org.json.JSONObject
 
 class AttentionAccessibilityService : AccessibilityService() {
     private var overlay: View? = null
@@ -49,6 +51,7 @@ class AttentionAccessibilityService : AccessibilityService() {
             currentPackage = packageName
             lastProtectedPackage = packageName
             protectedSessionStartedAt = now
+            recordRuntimeEvent(LocalRuntimeEvent.SessionStart("android", packageName))
             maybeIntervene(packageName, now)
         } else {
             if (currentPackage != packageName && currentPackage != null) {
@@ -87,6 +90,7 @@ class AttentionAccessibilityService : AccessibilityService() {
         val proposedLocal = LocalIntervention.valueOf(proposed.name)
         val intervention = LocalPolicyEngine.enforce(proposedLocal, packageName, minuteOfDay, policyStore.getRules())
         if (intervention != LocalIntervention.NONE) {
+            recordRuntimeEvent(LocalRuntimeEvent.InterventionResponse("android", intervention.name.lowercase(), LocalRuntimeEvent.Outcome.CONTINUED))
             showIntervention(intervention)
         }
     }
@@ -120,7 +124,10 @@ class AttentionAccessibilityService : AccessibilityService() {
 
         val leave = Button(this).apply {
             text = "Leave app"
-            setOnClickListener { performGlobalAction(GLOBAL_ACTION_HOME) }
+            setOnClickListener {
+                recordRuntimeEvent(LocalRuntimeEvent.InterventionResponse("android", intervention.name.lowercase(), LocalRuntimeEvent.Outcome.EXITED))
+                performGlobalAction(GLOBAL_ACTION_HOME)
+            }
         }
 
         root.addView(title)
@@ -130,7 +137,10 @@ class AttentionAccessibilityService : AccessibilityService() {
         if (intervention != LocalIntervention.LOCK) {
             root.addView(Button(this).apply {
                 text = "Continue intentionally"
-                setOnClickListener { removeIntervention() }
+                setOnClickListener {
+                    recordRuntimeEvent(LocalRuntimeEvent.InterventionResponse("android", intervention.name.lowercase(), LocalRuntimeEvent.Outcome.CONTINUED))
+                    removeIntervention()
+                }
             })
         }
 
@@ -147,6 +157,43 @@ class AttentionAccessibilityService : AccessibilityService() {
         val manager = getSystemService(WINDOW_SERVICE) as WindowManager
         manager.addView(root, params)
         overlay = root
+    }
+
+    private fun recordRuntimeEvent(event: LocalRuntimeEvent) {
+        runCatching {
+            LocalRuntimeEventValidator.validate(event)
+            val current = secureStore.get("runtime_events")?.let(::JSONArray) ?: JSONArray()
+            val entry = JSONObject().apply {
+                put("protocolVersion", event.protocolVersion)
+                put("platform", event.platform)
+                put("recordedAt", System.currentTimeMillis())
+                when (event) {
+                    is LocalRuntimeEvent.SessionStart -> {
+                        put("eventKind", "session-start")
+                        put("domain", event.domain)
+                    }
+                    is LocalRuntimeEvent.Sample -> {
+                        put("eventKind", "sample")
+                        event.domain?.let { put("domain", it) }
+                        put("elapsedSeconds", event.elapsedSeconds)
+                        put("interactions", event.interactions)
+                        put("scrolls", event.scrolls)
+                    }
+                    is LocalRuntimeEvent.InterventionResponse -> {
+                        put("eventKind", "intervention-response")
+                        put("intervention", event.intervention)
+                        put("outcome", event.outcome.name.lowercase())
+                    }
+                    is LocalRuntimeEvent.RecoveryCompleted -> {
+                        put("eventKind", "recovery-completed")
+                        put("durationSeconds", event.durationSeconds)
+                    }
+                }
+            }
+            current.put(entry)
+            while (current.length() > 100) current.remove(0)
+            secureStore.put("runtime_events", current.toString())
+        }
     }
 
     private fun removeIntervention() {
