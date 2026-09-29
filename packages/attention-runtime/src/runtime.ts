@@ -2,6 +2,7 @@ import {assessAttention,chooseIntervention,detectPassiveScrollLoop} from "@atten
 import {addDailySeconds,emptyDay,recordDriftEpisode,recordIntervention,todayKey,type DailySummary} from "@attention-firewall/local-analytics";
 import {recommendRecovery} from "@attention-firewall/recovery-engine";
 import type {RuntimeConfig,RuntimeDecision,RuntimeSession} from "./types.js";
+import {applyPolicy} from "@attention-firewall/policy-engine";
 import {budgetStatus,matchDomain,type IntentEnvelope} from "@attention-firewall/intent-engine";
 
 const sessionTimeoutMs=5*60_000;
@@ -81,7 +82,7 @@ export class AttentionRuntime{
 
   const cooldownActive=session.lastInterventionAt!==undefined&&now-session.lastInterventionAt<60_000;
   const selected=chooseIntervention(assessment,this.config.profile,now,{strict:this.config.protectionMode==="strict"});
-  const intervention=cooldownActive?"none":selected.intervention;
+  const policyIntervention=applyPolicy(selected.intervention,this.config.rules,{domain:intent?.targetDomains[0]??"web",minuteOfDay:new Date(now).getHours()*60+new Date(now).getMinutes()});\n  const intervention=cooldownActive?"none":policyIntervention;
 
   if(intervention!=="none")session.lastInterventionAt=now;
 
