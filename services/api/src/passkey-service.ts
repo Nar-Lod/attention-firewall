@@ -9,7 +9,7 @@ import {
 import type {AuthenticationResponseJSON,RegistrationResponseJSON} from "@simplewebauthn/server";
 
 export interface ChallengeStore{
- put(key:string,challenge:string,expiresAt:number):Promise<void>;
+ saveChallenge(key:string,challenge:string,expiresAt:number):Promise<void>;
  take(key:string,now:number):Promise<string|null>;
 }
 
@@ -48,7 +48,7 @@ export async function beginRegistration(
 ){
  const passkeys=await store.list(user.id);
  const result=await createRegistrationOptions(user,passkeys,config.rpName,config.rpID);
- await challenges.put("reg:"+user.id,result.challenge,now+config.challengeTtlMs);
+ await challenges.saveChallenge("reg:"+user.id,result.challenge,now+config.challengeTtlMs);
  return result;
 }
 
@@ -93,7 +93,7 @@ export async function beginAuthentication(
 ){
  const passkeys=await store.list(user.id);
  const result=await createAuthenticationOptions(passkeys,config.rpID);
- await challenges.put("auth:"+user.id,result.challenge,now+config.challengeTtlMs);
+ await challenges.saveChallenge("auth:"+user.id,result.challenge,now+config.challengeTtlMs);
  return result;
 }
 
