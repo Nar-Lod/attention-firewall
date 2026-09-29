@@ -12,6 +12,12 @@ function initialize(){
  let interactionCount=0;
  let firstAt=Date.now();
  let lastSentAt=Date.now();
+ let scrollBursts=0;
+ let scrollDirectionChanges=0;
+ let scrollDistance=0;
+ let lastScrollAt=0;
+ let lastDirection=0;
+ let inBurst=false;
 
  chrome.runtime.sendMessage({
   type:"SESSION_START",
@@ -23,6 +29,8 @@ function initialize(){
   const now=Date.now();
   if(now-lastSentAt<15000)return;
   const elapsed=Math.max(1,(now-firstAt)/1000);
+  const minutes=Math.max(elapsed/60,1/60);
+
   chrome.runtime.sendMessage({
    type:"ACTIVITY_SAMPLE",
    protocolVersion:RUNTIME_PROTOCOL_VERSION,
@@ -30,14 +38,51 @@ function initialize(){
    domain:safeDomain(),
    scrollCount:Math.min(scrollCount,500),
    interactionCount:Math.min(interactionCount,500),
+   scrollBursts:Math.min(scrollBursts,50),
+   scrollDirectionChanges:Math.min(scrollDirectionChanges,50),
+   scrollDistancePerMinute:Math.min(scrollDistance/minutes,50000),
    elapsedSeconds:Math.min(elapsed,300)
   }).catch(()=>{});
-  scrollCount=0;interactionCount=0;lastSentAt=now;
+
+  scrollCount=0;
+  interactionCount=0;
+  scrollBursts=0;
+  scrollDirectionChanges=0;
+  scrollDistance=0;
+  lastSentAt=now;
+  firstAt=now;
+  inBurst=false;
+  lastScrollAt=0;
+  lastDirection=0;
  }
 
- window.addEventListener("scroll",()=>{scrollCount++;reportActivity()},{passive:true});
+ window.addEventListener("scroll",()=>{
+  const now=Date.now();
+  const currentY=window.scrollY;
+  const previousY=(window as Window & {__AF_LAST_Y__?:number}).__AF_LAST_Y__??currentY;
+  const delta=currentY-previousY;
+  const direction=delta===0?0:(delta>0?1:-1);
+
+  scrollCount+=1;
+  scrollDistance+=Math.min(Math.abs(delta),5000);
+
+  if(lastScrollAt===0||now-lastScrollAt>1500){
+   scrollBursts+=1;
+   inBurst=true;
+  }else if(direction!==0&&lastDirection!==0&&direction!==lastDirection){
+   scrollDirectionChanges+=1;
+  }
+
+  if(direction!==0)lastDirection=direction;
+  lastScrollAt=now;
+  (window as Window & {__AF_LAST_Y__?:number}).__AF_LAST_Y__=currentY;
+
+  if(scrollCount%8===0)reportActivity();
+ },{passive:true});
+
  window.addEventListener("pointerdown",()=>{interactionCount++;reportActivity()},{passive:true});
  window.addEventListener("keydown",()=>{interactionCount++;reportActivity()},{passive:true});
+ window.setInterval(reportActivity,15000);
 
  chrome.runtime.onMessage.addListener((message:unknown)=>{
   if(!isInterventionMessage(message))return;
@@ -46,7 +91,7 @@ function initialize(){
 }
 
 function safeDomain(){
- try{return location.hostname.replace(/^www\./,"").slice(0,253)}
+ try{return location.hostname.replace(/^www\\./,"").slice(0,253)}
  catch{return "unknown"}
 }
 
@@ -131,7 +176,7 @@ function showIntervention(intervention:Intervention,recoveryMinutes:number){
 
  const exit=createButton("Exit & recover",true);
  const continueButton=createButton(intervention==="lock"?"Close":"Continue",false,intervention==="lock");
- let frictionTimer: number | undefined;
+ let frictionTimer:number|undefined;
  const clearFrictionTimer=()=>{if(frictionTimer!==undefined){window.clearInterval(frictionTimer);frictionTimer=undefined;}};
 
  exit.addEventListener("click",()=>{
@@ -147,7 +192,6 @@ function showIntervention(intervention:Intervention,recoveryMinutes:number){
  },{once:true});
 
  actions.append(exit,continueButton);
-
  card.append(kicker,title,body,meta);
 
  if(intervention==="deliberation"||intervention==="pause"||intervention==="delay"){
@@ -167,8 +211,6 @@ function showIntervention(intervention:Intervention,recoveryMinutes:number){
    continueButton.style.cursor=remaining>0?"not-allowed":"pointer";
    if(remaining<=0){window.clearInterval(frictionTimer);frictionTimer=undefined;}
   },1000);
-
-  
  }
 
  if(intervention==="commitment"){
