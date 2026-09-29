@@ -131,13 +131,17 @@ function showIntervention(intervention:Intervention,recoveryMinutes:number){
 
  const exit=createButton("Exit & recover",true);
  const continueButton=createButton(intervention==="lock"?"Close":"Continue",false,intervention==="lock");
+ let frictionTimer: number | undefined;
+ const clearFrictionTimer=()=>{if(frictionTimer!==undefined){window.clearInterval(frictionTimer);frictionTimer=undefined;}};
 
  exit.addEventListener("click",()=>{
+  clearFrictionTimer();
   sendOutcome(intervention,"exited");
   showRecovery(recoveryMinutes);
  },{once:true});
 
  continueButton.addEventListener("click",()=>{
+  clearFrictionTimer();
   sendOutcome(intervention,"continued");
   root.remove();
  },{once:true});
@@ -155,7 +159,7 @@ function showIntervention(intervention:Intervention,recoveryMinutes:number){
   continueButton.disabled=true;
 
   let remaining=seconds;
-  const timer=window.setInterval(()=>{
+  frictionTimer=window.setInterval(()=>{
    remaining-=1;
    countdown.textContent=remaining>0?"Continue in "+remaining+"s":"You can continue deliberately.";
    continueButton.disabled=remaining>0;
