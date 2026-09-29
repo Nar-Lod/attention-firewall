@@ -1,10 +1,13 @@
 export interface SecureStore<T>{get():Promise<T|null>;set(value:T):Promise<void>;clear():Promise<void>}
 
+const MAX_SERIALIZED_BYTES=512_000;
+
 type StoredRecord={key:string;iv:ArrayBuffer;ciphertext:ArrayBuffer};
 type KeyRecord={id:string;key:CryptoKey};
 
 export class EncryptedIndexedDbStore<T> implements SecureStore<T>{
  private dbPromise:Promise<IDBDatabase>|undefined;
+ private keyPromise:Promise<CryptoKey>|undefined;
 
  constructor(private readonly keyId="attention-firewall-v1",private readonly dbName="attention-firewall-secure"){}
 
@@ -20,6 +23,7 @@ export class EncryptedIndexedDbStore<T> implements SecureStore<T>{
   const key=await this.getKey();
   const iv=crypto.getRandomValues(new Uint8Array(12));
   const plaintext=new TextEncoder().encode(JSON.stringify(value));
+  if(plaintext.byteLength>MAX_SERIALIZED_BYTES)throw new Error("secure store value exceeds size limit");
   const ciphertext=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,plaintext);
   const db=await this.open();
   await new Promise<void>((resolve,reject)=>{
@@ -51,6 +55,12 @@ export class EncryptedIndexedDbStore<T> implements SecureStore<T>{
  }
 
  private async getKey():Promise<CryptoKey>{
+  if(this.keyPromise)return this.keyPromise;
+  this.keyPromise=this.loadOrCreateKey();
+  try{return await this.keyPromise}catch(error){this.keyPromise=undefined;throw error;}
+ }
+
+ private async loadOrCreateKey():Promise<CryptoKey>{
   const db=await this.open();
   const existing=await new Promise<KeyRecord|undefined>((resolve,reject)=>{
    const tx=db.transaction(["keys"],"readonly");
