@@ -10,6 +10,7 @@ function reportActivity(){
   const elapsed=Math.max(1,(now-firstAt)/1000);
   chrome.runtime.sendMessage({
     type:"ACTIVITY_SAMPLE",
+    domain:safeDomain(),
     scrollCount:Math.min(scrollCount,500),
     interactionCount:Math.min(interactionCount,500),
     elapsedSeconds:Math.min(elapsed,300)
