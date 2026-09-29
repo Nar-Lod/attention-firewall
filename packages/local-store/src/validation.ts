@@ -37,3 +37,23 @@ export function parseLocalProfile(value:unknown):LocalProfile{
  if(typeof privacy.telemetryOptIn!=="boolean"||typeof privacy.researchOptIn!=="boolean")throw new Error("invalid privacy");
  return value as LocalProfile;
 }
+
+
+export interface SafeInterventionProfile{successByIntervention:Record<string,number>;attemptsByIntervention:Record<string,number>}
+const interventions=new Set(["none","awareness","deliberation","pause","delay","commitment","lock"]);
+
+export function parseInterventionProfile(value:unknown):SafeInterventionProfile{
+ if(!value||typeof value!=="object")return {successByIntervention:{},attemptsByIntervention:{}};
+ const v=value as Record<string,unknown>;
+ return {successByIntervention:readCounts(v.successByIntervention),attemptsByIntervention:readCounts(v.attemptsByIntervention)};
+}
+
+function readCounts(value:unknown):Record<string,number>{
+ if(!value||typeof value!=="object")return {};
+ const out:Record<string,number>={};
+ for(const [key,raw] of Object.entries(value as Record<string,unknown>)){
+  if(!interventions.has(key)||typeof raw!=="number"||!Number.isFinite(raw)||raw<0||raw>100000)continue;
+  out[key]=Math.floor(raw);
+ }
+ return out;
+}
