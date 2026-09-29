@@ -16,26 +16,35 @@ export class DisabledVaultRepository implements VaultRepository{
  async delete():Promise<void>{return}
 }
 
-export function authenticateContext(request:Request):AuthenticatedContext{
- requireHttps(request);
- const accountId=request.headers.get("x-authenticated-account");
- const deviceId=request.headers.get("x-authenticated-device");
- if(!accountId||!deviceId)throw new Error("authentication required");
- if(!/^[a-zA-Z0-9_-]{8,128}$/.test(accountId))throw new Error("invalid account context");
- if(!/^[a-zA-Z0-9_-]{8,128}$/.test(deviceId))throw new Error("invalid device context");
- return {accountId,deviceId};
-}
+/**
+ * The context resolver MUST come from trusted server-side authentication middleware.
+ * Never populate AuthenticatedContext from client-supplied request headers.
+ */
+export type AuthenticatedContextResolver=
+ (request:Request)=>Promise<AuthenticatedContext|null>|AuthenticatedContext|null;
 
-export async function handleVault(request:Request,repository:VaultRepository):Promise<Response>{
+export async function handleVault(
+ request:Request,
+ repository:VaultRepository,
+ resolveContext?:AuthenticatedContextResolver
+):Promise<Response>{
  try{
-  const context=authenticateContext(request);
-  if(request.method==="GET")return Response.json(await repository.get(context.accountId));
+  requireHttps(request);
+  const context=resolveContext?await resolveContext(request):null;
+  if(!context)throw new Error("authentication required");
+  if(!isSafeId(context.accountId)||!isSafeId(context.deviceId))throw new Error("invalid auth context");
+
+  if(request.method==="GET"){
+   return Response.json(await repository.get(context.accountId));
+  }
 
   if(request.method==="PUT"){
    boundedJsonSize(request,MAX_ENVELOPE_BYTES);
    const payload=await request.json();
-   const envelope=validateVaultEnvelope(payload?.envelope);
-   const expectedVersion=payload?.expectedVersion===undefined?undefined:boundedVersion(payload.expectedVersion);
+   if(!payload||typeof payload!=="object")throw new Error("invalid payload");
+   const envelope=validateVaultEnvelope((payload as Record<string,unknown>).envelope);
+   const expectedVersionValue=(payload as Record<string,unknown>).expectedVersion;
+   const expectedVersion=expectedVersionValue===undefined?undefined:boundedVersion(expectedVersionValue);
    const saved=await repository.put(context.accountId,envelope,expectedVersion);
    return Response.json({version:saved.version,updatedAt:saved.updatedAt});
   }
@@ -48,12 +57,16 @@ export async function handleVault(request:Request,repository:VaultRepository):Pr
   return new Response("method not allowed",{status:405,headers:{"Allow":"GET,PUT,DELETE"}});
  }catch(error){
   const message=error instanceof Error?error.message:"request rejected";
-  if(message==="authentication required"||message==="invalid account context"||message==="invalid device context")return Response.json({error:"unauthorized"},{status:401});
+  if(message==="authentication required"||message==="invalid auth context")return Response.json({error:"unauthorized"},{status:401});
   if(message==="https required")return Response.json({error:"https_required"},{status:400});
   if(message==="request too large")return Response.json({error:"payload_too_large"},{status:413});
   if(message==="vault persistence not configured")return Response.json({error:"service_not_configured"},{status:503});
   return Response.json({error:"invalid_request"},{status:400});
  }
+}
+
+function isSafeId(value:unknown):value is string{
+ return typeof value==="string"&&/^[a-zA-Z0-9_-]{8,128}$/.test(value);
 }
 
 function boundedVersion(value:unknown):number{
