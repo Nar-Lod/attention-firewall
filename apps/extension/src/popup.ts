@@ -1,7 +1,8 @@
 import {encryptJson} from "@attention-firewall/security-core";
+import {getLocalState,setLocalState} from "./local-state.js";
 
 type Purpose="work"|"study"|"communication"|"entertainment"|"rest"|"other";
-interface LocalIntent{label:string;targetDomains:string[];startedAt:number;purpose:Purpose;budgetMinutes?:number}
+interface LocalIntent{id:string;label:string;targetDomains:string[];startedAt:number;purpose:Purpose;budgetMinutes?:number}
 interface DailySummary{date:string;intentionalSeconds:number;passiveSeconds:number;driftEpisodes:number;interventionsShown:number;interventionsAccepted:number;attentionRecoveredSeconds:number}
 interface LocalSettings{protectionMode:"adaptive"|"strict";webProtectionEnabled:boolean}
 
@@ -15,15 +16,15 @@ const webStatusEl=document.getElementById("webStatus") as HTMLDivElement;
 const enableWeb=document.getElementById("webProtection") as HTMLButtonElement;
 const disableWeb=document.getElementById("disableWebProtection") as HTMLButtonElement;
 
-chrome.storage.local.get(["currentIntent","protectionMode","dailySummary","webProtectionEnabled"]).then(result=>{
- const value=result.currentIntent as LocalIntent|undefined;
+Promise.all([getLocalState(),chrome.storage.local.get("webProtectionEnabled")]).then(([state,permissionState])=>{
+ const value=state.currentIntent as LocalIntent|undefined;
  if(value){
   intentEl.value=value.label;
   domainsEl.value=value.targetDomains.join(", ");
   purposeEl.value=value.purpose;
   budgetEl.value=value.budgetMinutes?String(value.budgetMinutes):"";
  }
- modeEl.value=(result.protectionMode as LocalSettings["protectionMode"]|undefined)??"adaptive";
+ modeEl.value=state.protectionMode;
  renderSummary(result.dailySummary as DailySummary|undefined);
  renderWebStatus(Boolean(result.webProtectionEnabled));
 });
@@ -117,7 +118,7 @@ document.getElementById("saveRule")?.addEventListener("click",async()=>{
  const next=[...rules.filter((rule:unknown)=>typeof rule==="object"&&rule!==null&&(rule as Record<string,unknown>).value!==value),
   {id:"rule_"+crypto.randomUUID(),target:"site",value,enabled:true,minimumIntervention:ruleLevelEl.value}
  ].slice(0,100);
- await chrome.storage.local.set({rules:next});
+ await setLocalState({rules:next});
  ruleDomainEl.value="";
  statusEl.textContent="Site rule saved on this device.";
 });
@@ -148,7 +149,7 @@ document.getElementById("saveCommitment")?.addEventListener("click",async()=>{
   changeCooldownMinutes:Math.min(60,minutes),
   createdAt:now
  };
- await chrome.storage.local.set({commitments:[...commitments,commitment].slice(-50)});
+ await setLocalState({commitments:[...commitments,commitment].slice(-50)});
  commitDomainEl.value="";
  commitMinutesEl.value="";
  statusEl.textContent="Commitment started on this device.";
@@ -159,7 +160,7 @@ document.getElementById("exportLocal")?.addEventListener("click",async()=>{
  try{
   const passphrase=window.prompt("Create an export passphrase (12+ characters). It is never sent to Attention Firewall.");
   if(!passphrase||passphrase.length<12){statusEl.textContent="Export cancelled. Use at least 12 characters.";return;}
-  const snapshot=await chrome.storage.local.get(null);
+  const snapshot=await getLocalState();
   const blob=await encryptJson({exportedAt:new Date().toISOString(),data:snapshot},passphrase);
   const file=new Blob([JSON.stringify(blob,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(file);
