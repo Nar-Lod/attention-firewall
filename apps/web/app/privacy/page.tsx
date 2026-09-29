@@ -4,6 +4,7 @@ import {useMemo,useState} from "react";
 import {EncryptedIndexedDbStore} from "@attention-firewall/secure-browser-store";
 import {encryptJson} from "@attention-firewall/security-core";
 import {buildSyncableSettings} from "@attention-firewall/sync-vault";
+import {createSecurityEvent,type SecurityEvent} from "@attention-firewall/security-audit";
 
 type LocalProfile={
  version:1;
@@ -12,6 +13,7 @@ type LocalProfile={
  commitments:unknown[];
  interventionProfile:unknown;
  privacy:{telemetryOptIn:boolean;researchOptIn:boolean};
+ securityEvents?:SecurityEvent[];
 };
 
 export default function PrivacyPage(){
@@ -30,9 +32,9 @@ export default function PrivacyPage(){
  const localOnly=async()=>{
   const existing=(await profileStore.get())??{
    version:1,rules:[],commitments:[],interventionProfile:{},
-   privacy:{telemetryOptIn:false,researchOptIn:false}
+   privacy:{telemetryOptIn:false,researchOptIn:false},securityEvents:[]
   };
-  await profileStore.set({...existing,privacy:{telemetryOptIn:false,researchOptIn:false}});
+  const securityEvents=[...(existing.securityEvents??[]),createSecurityEvent("permission_changed","success")].slice(-100);\n  await profileStore.set({...existing,privacy:{telemetryOptIn:false,researchOptIn:false},securityEvents});
   setMessage("Local-only mode is enabled. No behavioral telemetry is required.");
  };
 
@@ -41,7 +43,7 @@ export default function PrivacyPage(){
    if(passphrase.length<12){setMessage("Use a passphrase of at least 12 characters.");return;}
    const profile=(await profileStore.get())??{
     version:1,rules:[],commitments:[],interventionProfile:{},
-    privacy:{telemetryOptIn:false,researchOptIn:false}
+    privacy:{telemetryOptIn:false,researchOptIn:false},securityEvents:[]
    };
    const syncable=buildSyncableSettings(profile);
    const localBackup=await historyStore.get();
@@ -55,7 +57,7 @@ export default function PrivacyPage(){
    link.click();
    link.remove();
    URL.revokeObjectURL(url);
-   setMessage("Encrypted local export created. The passphrase never leaves this browser.");
+   const securityEvents=[...(profile.securityEvents??[]),createSecurityEvent("encrypted_export_created","success")].slice(-100);\n   await profileStore.set({...profile,securityEvents});\n   setMessage("Encrypted local export created. The passphrase never leaves this browser.");
   }catch{
    setMessage("Export failed. No data was uploaded.");
   }
