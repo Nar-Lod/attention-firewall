@@ -114,8 +114,8 @@ async function handleActivity(tabId:number,message:ActivitySample){
  const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","dailyHistory","rules"]);
  const intent=sanitizeIntent(stored.currentIntent);
  const profile=parseInterventionProfile(stored.interventionProfile);
- const history=Array.isArray((stored.dailyHistory as {days?:unknown[]}|undefined)?.days)?(stored.dailyHistory as {days?:unknown[]}).days as never[]:[];
- const attentionTwin=buildAttentionTwin(history as any,profile);
+ const savedHistory=stored.dailyHistory as DailyHistory|undefined;
+ const attentionTwin=buildAttentionTwin(savedHistory?.version===1?savedHistory.days:[],profile);
  const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
 
  let current=state;
