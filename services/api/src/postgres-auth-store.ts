@@ -179,10 +179,10 @@ export class PostgresAuthStore implements VaultRepository,ChallengeStore,Passkey
  }
 
  private mapPasskey(row:any):StoredPasskey{
-  let transports:AuthenticatorTransportFuture[]|undefined;
+  let transports:string[]|undefined;
   try{
    const parsed=JSON.parse(String(row.transports??"[]"));
-   if(Array.isArray(parsed))transports=parsed as AuthenticatorTransportFuture[];
+   if(Array.isArray(parsed))transports=parsed as string[];
   }catch{transports=undefined}
   return {
    id:String(row.id),
