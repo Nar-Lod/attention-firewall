@@ -32,6 +32,13 @@ export class AttentionRuntime{
 
  getSummary():DailySummary{return this.summary;}
 
+ getInterventionProfile(){
+  return {
+   successByIntervention:{...this.config.profile.successByIntervention},
+   attemptsByIntervention:{...this.config.profile.attemptsByIntervention}
+  };
+}
+
  begin(target:string):RuntimeSession{
   const now=this.clock.now();
   this.session={
