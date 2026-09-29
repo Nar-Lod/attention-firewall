@@ -1,29 +1,59 @@
 "use client";
 
-import {useState} from "react";
-import {browserStore,DEFAULT_PROFILE} from "@attention-firewall/local-store";
+import {useMemo,useState} from "react";
+import {EncryptedIndexedDbStore} from "@attention-firewall/secure-browser-store";
 import {encryptJson} from "@attention-firewall/security-core";
+
+interface LocalProfile{
+ version:1;
+ intent?:unknown;
+ rules:unknown[];
+ interventionProfile:unknown;
+ privacy:{telemetryOptIn:boolean;researchOptIn:boolean};
+}
 
 export default function PrivacyPage(){
  const [message,setMessage]=useState("");
  const [passphrase,setPassphrase]=useState("");
- const store=()=>browserStore("attention-firewall.profile");
- const clear=async()=>{await store().clear();setMessage("Local settings and learned profile cleared.");};
- const localOnly=async()=>{await store().set(DEFAULT_PROFILE);setMessage("Local-only mode is enabled. No cloud telemetry is required.");};
+ const store=useMemo(()=>new EncryptedIndexedDbStore<LocalProfile>(),[]);
+
+ const clear=async()=>{
+  await store.clear();
+  localStorage.removeItem("attention-firewall.profile");
+  setMessage("Local profile cleared.");
+ };
+
+ const localOnly=async()=>{
+  const profile:LocalProfile={
+   version:1,
+   rules:[],
+   interventionProfile:{},
+   privacy:{telemetryOptIn:false,researchOptIn:false}
+  };
+  await store.set(profile);
+  setMessage("Local-only mode is enabled. No cloud telemetry is required.");
+ };
+
  const exportEncrypted=async()=>{
   try{
    if(passphrase.length<12){setMessage("Use a passphrase of at least 12 characters.");return;}
-   const profile=await store().get();
+   const profile=await store.get();
    const blob=await encryptJson({exportedAt:new Date().toISOString(),profile},passphrase);
    const file=new Blob([JSON.stringify(blob,null,2)],{type:"application/json"});
    const url=URL.createObjectURL(file);
    const link=document.createElement("a");
-   link.href=url;link.download="attention-firewall-encrypted-export.json";
-   document.body.appendChild(link);link.click();link.remove();
+   link.href=url;
+   link.download="attention-firewall-encrypted-export.json";
+   document.body.appendChild(link);
+   link.click();
+   link.remove();
    URL.revokeObjectURL(url);
    setMessage("Encrypted export created locally.");
-  }catch{setMessage("Export failed. No data was uploaded.");}
+  }catch{
+   setMessage("Export failed. No data was uploaded.");
+  }
  };
+
  return <main className="privacy-page">
   <a href="/">← Dashboard</a>
   <h1>Privacy Center</h1>
