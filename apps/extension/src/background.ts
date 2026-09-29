@@ -1,112 +1,82 @@
-import {assessAttention,chooseIntervention} from "@attention-firewall/attention-engine";
-import {addDailySeconds,emptyDay,recordDriftEpisode,recordIntervention,todayKey} from "@attention-firewall/local-analytics";
+import {AttentionRuntime} from "@attention-firewall/attention-runtime";
 
-interface LocalIntent{label:string;targetDomains:string[];startedAt:number}
+interface LocalIntent{label:string;targetDomains:string[];startedAt:number;purpose?:"work"|"study"|"communication"|"entertainment"|"rest"|"other"}
 interface LocalProfile{successByIntervention:Record<string,number>;attemptsByIntervention:Record<string,number>}
-interface Session{startedAt:number;domain:string;passiveSeconds:number;recentReopens:number;interactionCount:number;scrollCount:number;elapsedReported:number;lastInterventionAt:number}
 interface ActivitySample{type:"ACTIVITY_SAMPLE";scrollCount:number;interactionCount:number;elapsedSeconds:number;domain:string}
+interface SessionRuntimeState{domain:string;runtime:AttentionRuntime;lastInterventionAt:number}
 
-const sessions=new Map<number,Session>();
-
-chrome.tabs.onRemoved.addListener(tabId=>sessions.delete(tabId));
+const runtimes=new Map<number,SessionRuntimeState>();
 
 chrome.runtime.onMessage.addListener((message:unknown,sender)=>{
  if(sender.tab?.id===undefined)return;
-
  if(isActivityMessage(message)){
-  const session=getOrCreateSession(sender.tab.id,message.domain);
-  if(session.domain!==message.domain){
-   session.recentReopens=Math.min(session.recentReopens+1,20);
-   session.domain=message.domain;session.startedAt=Date.now();session.passiveSeconds=0;
-   session.interactionCount=0;session.scrollCount=0;session.elapsedReported=0;
-  }
-  session.scrollCount=Math.min(session.scrollCount+message.scrollCount,1000);
-  session.interactionCount=Math.min(session.interactionCount+message.interactionCount,1000);
-  session.elapsedReported=Math.min(session.elapsedReported+message.elapsedSeconds,1800);
-  if(message.interactionCount===0&&message.scrollCount>0)session.passiveSeconds=Math.min(session.passiveSeconds+message.elapsedSeconds,1800);
-  void recordSampleAnalytics(message.domain,message.elapsedSeconds,message.interactionCount,message.scrollCount);
-  void evaluate(sender.tab.id,session);
+  void handleActivity(sender.tab.id,message);
   return;
  }
-
- if(isInterventionResponse(message))void recordOutcome(message.intervention,message.outcome);
+ if(isInterventionResponse(message)){
+  void handleResponse(message.intervention,message.outcome);
+ }
 });
 
-function getOrCreateSession(tabId:number,domain:string):Session{
- let session=sessions.get(tabId);
- if(!session){
-  session={startedAt:Date.now(),domain,passiveSeconds:0,recentReopens:0,interactionCount:0,scrollCount:0,elapsedReported:0,lastInterventionAt:0};
-  sessions.set(tabId,session);
- }
- return session;
-}
-
-async function evaluate(tabId:number,session:Session){
- if(Date.now()-session.lastInterventionAt<60000)return;
+async function handleActivity(tabId:number,message:ActivitySample){
+ const state=runtimes.get(tabId);
  const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode"]);
  const intent=stored.currentIntent as LocalIntent|undefined;
  const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{}};
- const strict=(stored.protectionMode as string|undefined)==="strict";
- const intentDomains=new Set((intent?.targetDomains??[]).map(v=>v.toLowerCase()));
- const outsideIntent=Boolean(intent&&intentDomains.size>0&&!intentDomains.has(session.domain.toLowerCase()));
- const declaredIntentMatch=!intent||intentDomains.size===0||intentDomains.has(session.domain.toLowerCase())?1:0;
- const hour=new Date().getHours();
- const lateNightRisk=hour>=22||hour<6?1:0;
- const total=Math.max(1,session.interactionCount+session.scrollCount);
- const interactionRate=Math.min(1,session.interactionCount/total);
- const scrollEventsPerMinute=Math.min(120,(session.scrollCount/Math.max(1,(Date.now()-session.startedAt)/60000)));
+ const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
 
- const assessment=assessAttention({
-  sessionSeconds:(Date.now()-session.startedAt)/1000,
-  repeatedOpens:session.recentReopens,recentReopens:session.recentReopens,
-  passiveSeconds:session.passiveSeconds,interactionRate,scrollEventsPerMinute,contextSwitches:0,
-  declaredIntentMatch,outsideIntent,lateNightRisk,notificationLaunch:false,previousInterventionIgnored:false
+ let current=state;
+ if(!current||current.domain!==message.domain){
+  current={domain:message.domain,lastInterventionAt:0,runtime:new AttentionRuntime({
+   protectionMode,
+   profile,
+   intent:intent?{
+    id:intent.startedAt.toString(36),label:intent.label,purpose:intent.purpose??"other",
+    targetDomains:intent.targetDomains,startedAt:intent.startedAt
+   }:undefined
+  })};
+  runtimes.set(tabId,current);
+  current.runtime.begin(message.domain);
+ }
+
+ const allowed=new Set((intent?.targetDomains??[]).map(v=>v.toLowerCase()));
+ const outsideIntent=Boolean(intent&&allowed.size>0&&!allowed.has(message.domain.toLowerCase()));
+ const intentMatch=!intent||allowed.size===0||allowed.has(message.domain.toLowerCase())?1:0;
+ const hour=new Date().getHours();
+ const result=current.runtime.sample({
+  elapsedSeconds:message.elapsedSeconds,
+  interactions:message.interactionCount,
+  scrolls:message.scrollCount,
+  intentMatch,
+  outsideIntent,
+  lateNightRisk:hour>=22||hour<6?1:0
  });
- const decision=chooseIntervention(assessment,{successByIntervention:profile.successByIntervention,attemptsByIntervention:profile.attemptsByIntervention},Date.now(),{strict});
- if(decision.intervention!=="none"){
-  session.lastInterventionAt=Date.now();
-  void recordInterventionShown();
-  await chrome.tabs.sendMessage(tabId,{type:"ATTENTION_INTERVENTION",intervention:decision.intervention}).catch(()=>{});
+
+ await chrome.storage.local.set({dailySummary:result.dailySummary});
+
+ if(result.intervention!=="none"&&Date.now()-current.lastInterventionAt>=60_000){
+  current.lastInterventionAt=Date.now();
+  await chrome.tabs?.sendMessage?.(tabId,{type:"ATTENTION_INTERVENTION",intervention:result.intervention}).catch(()=>{});
  }
 }
 
-async function recordOutcome(intervention:string,outcome:"continued"|"exited"){
+async function handleResponse(intervention:string,outcome:"continued"|"exited"){
  const stored=await chrome.storage.local.get(["interventionProfile","dailySummary"]);
  const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{}};
  profile.attemptsByIntervention[intervention]=(profile.attemptsByIntervention[intervention]??0)+1;
  if(outcome==="exited")profile.successByIntervention[intervention]=(profile.successByIntervention[intervention]??0)+1;
- let summary=stored.dailySummary as ReturnType<typeof emptyDay>|undefined;
- summary=summary&&summary.date===todayKey()?summary:emptyDay();
- summary=recordIntervention(summary,outcome==="exited");
- await chrome.storage.local.set({interventionProfile:profile,dailySummary:summary});
-}
+ await chrome.storage.local.set({interventionProfile:profile});
 
-async function recordSampleAnalytics(domain:string,seconds:number,interactions:number,scrolls:number){
- const stored=await chrome.storage.local.get(["currentIntent","dailySummary"]);
- const intent=stored.currentIntent as LocalIntent|undefined;
- const allowed=new Set((intent?.targetDomains??[]).map(v=>v.toLowerCase()));
- const outside=Boolean(intent&&allowed.size>0&&!allowed.has(domain.toLowerCase()));
- let summary=stored.dailySummary as ReturnType<typeof emptyDay>|undefined;
- summary=summary&&summary.date===todayKey()?summary:emptyDay();
- if(scrolls>0&&interactions===0)summary=addDailySeconds(summary,"passiveSeconds",seconds);
- else if(!outside)summary=addDailySeconds(summary,"intentionalSeconds",seconds);
- await chrome.storage.local.set({dailySummary:summary});
-}
-
-async function recordInterventionShown(){
- const stored=await chrome.storage.local.get("dailySummary");
- let summary=stored.dailySummary as ReturnType<typeof emptyDay>|undefined;
- summary=summary&&summary.date===todayKey()?summary:emptyDay();
- summary=recordDriftEpisode(summary);
- await chrome.storage.local.set({dailySummary:summary});
+ for(const state of runtimes.values())state.runtime.respond(intervention,outcome);
+ void stored.dailySummary;
 }
 
 function isActivityMessage(value:unknown):value is ActivitySample{
  if(!value||typeof value!=="object")return false;
  const v=value as Record<string,unknown>;
  return v.type==="ACTIVITY_SAMPLE"&&typeof v.domain==="string"&&v.domain.length>=1&&v.domain.length<=253&&
-  Number.isSafeInteger(v.scrollCount)&&Number(v.scrollCount)>=0&&Number(v.scrollCount)<=500&&
-  Number.isSafeInteger(v.interactionCount)&&Number(v.interactionCount)>=0&&Number(v.interactionCount)<=500&&
+  Number.isSafeInteger(v.scrollCount)&&v.scrollCount>=0&&v.scrollCount<=500&&
+  Number.isSafeInteger(v.interactionCount)&&v.interactionCount>=0&&v.interactionCount<=500&&
   typeof v.elapsedSeconds==="number"&&Number.isFinite(v.elapsedSeconds)&&v.elapsedSeconds>=0&&v.elapsedSeconds<=300;
 }
 
