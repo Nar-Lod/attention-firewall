@@ -205,7 +205,7 @@ async function handleSessionStart(tabId:number,message:SessionStart){
  let state=runtimes.get(tabId);
  if(!state){
   state={domain:message.domain,lastInterventionAt:0,contextSwitches:0,runtime:new AttentionRuntime({
-   protectionMode,profile,rules:safeRules(stored.rules),attentionTwin,commitments,intent:intent as IntentEnvelope|undefined
+   protectionMode,profile,rules:safeRules(stored.rules),attentionTwin,commitments,...(intent?{intent}: {})
   },undefined,typeof stored.dailySummary==="object"&&stored.dailySummary?stored.dailySummary:undefined)};
   runtimes.set(tabId,state);
   state.runtime.begin(message.domain);
