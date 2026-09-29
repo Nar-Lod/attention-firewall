@@ -15,7 +15,7 @@ describe("AttentionRuntime",()=>{
   let now=1_000_000;
   const rt=new AttentionRuntime(config(),{now:()=>now});
   rt.begin("example.com");
-  const r=rt.sample({elapsedSeconds:60,interactions:2,scrolls:40,intentMatch:1,outsideIntent:false});
+  const r=rt.sample({elapsedSeconds:60,interactions:2,scrolls:40,domain:"example.com"});
   expect(r.session.elapsedSeconds).toBe(60);
   expect(r.dailySummary.passiveSeconds).toBe(60);
   expect(["none","awareness","deliberation","pause","delay","commitment","lock"]).toContain(r.intervention);
