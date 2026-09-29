@@ -3,10 +3,11 @@
   "name":"Attention Firewall",
   "version":"0.1.0",
   "description":"Local-first attention interventions for the web.",
-  "permissions":["storage"],
-  "background":{"service_worker":"dist/background.js","type":"module"},
-  "content_scripts":[{"matches":["<all_urls>"],"js":["dist/content.js"],"run_at":"document_idle"}],
+  "permissions":["storage","scripting"],
+  "optional_host_permissions":["https://*/*"],
+  "background":{"service_worker":"background.js","type":"module"},
   "action":{"default_title":"Attention Firewall","default_popup":"popup.html"},
   "options_page":"options.html",
-  "content_security_policy":{"extension_pages":"script-src 'self'; object-src 'self'"}
+  "content_security_policy":{"extension_pages":"script-src 'self'; object-src 'self'"},
+  "minimum_chrome_version":"96"
 }
