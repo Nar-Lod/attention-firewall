@@ -53,7 +53,7 @@ export async function createRegistrationOptions(
   excludeCredentials:existingPasskeys.map(passkey=>passkey.transports?.length?{id:passkey.id,transports:passkey.transports}:{id:passkey.id}),
   authenticatorSelection:{
    residentKey:"required",
-   userVerification:"preferred"
+   userVerification:"required"
   }
  });
  return {options,challenge:options.challenge};
