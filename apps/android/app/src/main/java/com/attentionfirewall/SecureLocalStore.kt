@@ -14,6 +14,7 @@ class SecureLocalStore(private val context: Context) {
         private const val STORE = "attention_firewall_secure"
         private const val KEY_ALIAS = "attention_firewall_local_key_v1"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
+        private const val MAX_VALUE_BYTES = 512_000
     }
 
     private val preferences by lazy {
@@ -22,19 +23,21 @@ class SecureLocalStore(private val context: Context) {
 
     fun put(key: String, value: String) {
         require(key.length in 1..128)
+        val plaintext = value.toByteArray(StandardCharsets.UTF_8)
+        require(plaintext.size <= MAX_VALUE_BYTES) { "secure value exceeds size limit" }
         val cipher = Cipher.getInstance(TRANSFORMATION)
         val iv = ByteArray(12).also { java.security.SecureRandom().nextBytes(it) }
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey(), GCMParameterSpec(128, iv))
-        val ciphertext = cipher.doFinal(value.toByteArray(StandardCharsets.UTF_8))
+        val ciphertext = cipher.doFinal(plaintext)
         val packed = Base64.encodeToString(iv + ciphertext, Base64.NO_WRAP)
-        preferences.edit().putString(key, packed).apply()
+        check(preferences.edit().putString(key, packed).commit()) { "secure local write failed" }
     }
 
     fun get(key: String): String? {
         require(key.length in 1..128)
         val packed = preferences.getString(key, null) ?: return null
         val bytes = Base64.decode(packed, Base64.NO_WRAP)
-        require(bytes.size > 12)
+        require(bytes.size > 12 && bytes.size <= MAX_VALUE_BYTES + 12 + 32) { "invalid secure local value" }
         val iv = bytes.copyOfRange(0, 12)
         val ciphertext = bytes.copyOfRange(12, bytes.size)
         val cipher = Cipher.getInstance(TRANSFORMATION)
