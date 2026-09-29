@@ -1,5 +1,6 @@
 import {encryptJson} from "@attention-firewall/security-core";
 import {appendSecurityEvent,getLocalState,setLocalState} from "./local-state.js";
+import {hostPatterns} from "./host-permissions.js";
 import type {Commitment} from "@attention-firewall/commitment-engine";
 import type {PolicyRule} from "@attention-firewall/policy-engine";
 
@@ -105,14 +106,6 @@ function renderSummary(summary:DailySummary|undefined){
  const exits=summary?.interventionsAccepted??0;
  accepted.textContent=attempts?Math.round((exits/attempts)*100)+"%":"0%";
 }
-
-function hostPatterns(domains:string[]):string[]{
- return [...new Set(domains.flatMap(domain=>domain?[
-  "https://"+domain+"/*",
-  "https://*."+domain+"/*"
- ]:[]))].slice(0,60);
-}
-
 function normalizePurpose(value:string):Purpose{
  return ["work","study","communication","entertainment","rest"].includes(value)?value as Purpose:"other";
 }
