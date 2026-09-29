@@ -3,7 +3,6 @@ import {
  generateRegistrationOptions,
  verifyAuthenticationResponse,
  verifyRegistrationResponse,
- type AuthenticatorTransportFuture,
  type PublicKeyCredentialCreationOptionsJSON,
  type PublicKeyCredentialRequestOptionsJSON,
  type RegistrationResponseJSON,
@@ -98,8 +97,7 @@ export async function verifyAuthentication(
  const credential:WebAuthnCredential={
   id:passkey.id,
   publicKey:new Uint8Array(passkey.publicKey),
-  counter:passkey.counter,
-  transports:passkey.transports
+  counter:passkey.counter
  };
  return verifyAuthenticationResponse({
   response,
