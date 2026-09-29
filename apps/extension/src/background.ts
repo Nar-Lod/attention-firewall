@@ -50,29 +50,36 @@ chrome.runtime.onMessage.addListener((message:unknown,sender)=>{
 });
 
 async function syncProtection(){
- const granted=await chrome.permissions.contains({origins:["https://*/*"],permissions:["scripting"]});
- const stored=await chrome.storage.local.get("webProtectionEnabled");
- if(granted&&stored.webProtectionEnabled===true){
-  await registerDetector();
- }else if(stored.webProtectionEnabled===true&&!granted){
+ const state=await getLocalState();
+ const enabled=(await chrome.storage.local.get("webProtectionEnabled")).webProtectionEnabled===true;
+ const patterns=hostPatterns(state.currentIntent?.targetDomains??[]);
+ const granted=patterns.length>0&&await chrome.permissions.contains({origins:patterns});
+ if(enabled&&granted){
+  await registerDetector(patterns);
+ }else if(enabled){
   await chrome.storage.local.set({webProtectionEnabled:false});
+  await unregisterDetector();
  }
 }
 
 async function enableWebProtection(){
- const granted=await chrome.permissions.contains({origins:["https://*/*"]});
+ const state=await getLocalState();
+ const patterns=hostPatterns(state.currentIntent?.targetDomains??[]);
+ const granted=patterns.length>0&&await chrome.permissions.contains({origins:patterns});
  if(!granted){
   await chrome.storage.local.set({webProtectionEnabled:false});
   return;
  }
  await chrome.storage.local.set({webProtectionEnabled:true});
  await appendSecurityEvent("permission_changed","success");
- await registerDetector();
+ await registerDetector(patterns);
 }
 
 async function disableWebProtection(){
+ const state=await getLocalState();
+ const patterns=hostPatterns(state.currentIntent?.targetDomains??[]);
  await unregisterDetector();
- await chrome.permissions.remove({origins:["https://*/*"]}).catch(()=>false);
+ if(patterns.length>0)await chrome.permissions.remove({origins:patterns}).catch(()=>false);
  await chrome.storage.local.set({webProtectionEnabled:false});
  await appendSecurityEvent("permission_changed","success");
  runtimes.clear();
@@ -80,8 +87,10 @@ async function disableWebProtection(){
 }
 
 async function clearLocalData(){
+ const state=await getLocalState();
+ const patterns=hostPatterns(state.currentIntent?.targetDomains??[]);
  await unregisterDetector();
- await chrome.permissions.remove({origins:["https://*/*"]}).catch(()=>false);
+ if(patterns.length>0)await chrome.permissions.remove({origins:patterns}).catch(()=>false);
  await chrome.storage.local.remove("webProtectionEnabled");
  await clearLocalState();
  runtimes.clear();
@@ -98,18 +107,26 @@ async function handlePermissionRemoved(){
  runtimes.clear();
 }
 
-async function registerDetector(){
+async function registerDetector(patterns:string[]){
  const existing=await chrome.scripting.getRegisteredContentScripts({ids:[CONTENT_SCRIPT_ID]});
- if(existing.length>0)return;
+ if(existing.length>0)await unregisterDetector();
+ if(patterns.length===0)return;
  await chrome.scripting.registerContentScripts([{
   id:CONTENT_SCRIPT_ID,
-  matches:["https://*/*"],
+  matches:patterns,
   js:["content.js"],
   runAt:"document_idle",
   allFrames:false,
   persistAcrossSessions:true,
   world:"ISOLATED"
  }]);
+}
+
+function hostPatterns(domains:string[]):string[]{
+ return [...new Set(domains.flatMap(domain=>domain?[
+  "https://"+domain+"/*",
+  "https://*."+domain+"/*"
+ ]:[]))].slice(0,60);
 }
 
 async function unregisterDetector(){
