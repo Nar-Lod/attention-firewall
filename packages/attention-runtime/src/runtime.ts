@@ -92,8 +92,14 @@ export class AttentionRuntime{
   }
 
   const cooldownActive=session.lastInterventionAt!==undefined&&now-session.lastInterventionAt<60_000;
-  const selected=chooseIntervention(assessment,this.config.profile,now,{strict:this.config.protectionMode==="strict"});
-  const policyIntervention=applyPolicy(selected.intervention,this.config.rules,{domain:sample.domain??"web",minuteOfDay:new Date(now).getHours()*60+new Date(now).getMinutes()});
+  let selected=chooseIntervention(assessment,this.config.profile,now,{strict:this.config.protectionMode==="strict"});
+  const currentHour=new Date(now).getHours();
+  const twin=this.config.attentionTwin;
+  const preemptive=twin!==undefined&&twin.sampleDays>=7&&twin.highRiskHours.includes(currentHour)&&session.elapsedSeconds>=300&&assessment.score>=0.20;
+  if(preemptive&&selected.intervention==="none"){
+   selected={...selected,intervention:"awareness",reason:"Local Attention Twin indicates a high-risk attention window."};
+  }
+  const policyIntervention=applyPolicy(selected.intervention,this.config.rules,{domain:sample.domain??"web",minuteOfDay:currentHour*60+new Date(now).getMinutes()});
   const intervention=cooldownActive?"none":policyIntervention;
 
   if(intervention!=="none")session.lastInterventionAt=now;
