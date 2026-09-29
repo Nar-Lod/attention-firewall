@@ -35,6 +35,6 @@ This is an invention-development document, not a legal opinion. Prior-art search
 
 ## Public-repository caution
 
-The GitHub repository is currently public. Treat detailed inventive disclosures placed in it as publicly available for patent-strategy purposes.
+The GitHub repository is currently private. Treat repository access as controlled, but do not assume confidentiality once material is shared outside the repository or deployed publicly.
 
 WIPO advises filing before public disclosure in general because pre-filing disclosure can become prior art, subject to applicable national grace-period rules. Kenya has a statutory grace-period provision for certain applicant-originated disclosures, but international patent strategy and other jurisdictions can differ. File/protect the intended invention before publishing additional claim-level detail, and have patent counsel review the existing public disclosure history. citeturn207067search0turn207067search3turn207067search4
