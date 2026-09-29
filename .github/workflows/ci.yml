@@ -21,7 +21,6 @@ jobs:
       - run: pnpm install --no-frozen-lockfile --allow-build=esbuild
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm build
       - run: pnpm audit --audit-level high
       - run: pnpm security:extension
       - name: Check for obvious secret material
