@@ -98,3 +98,24 @@ function normalizeDomain(value:string){
  try{return new URL("https://"+value.trim().replace(/^https?:\/\//,"")).hostname.replace(/^www\./,"").slice(0,253)}
  catch{return ""}
 }
+
+
+const ruleDomainEl=document.getElementById("ruleDomain") as HTMLInputElement;
+const ruleLevelEl=document.getElementById("ruleLevel") as HTMLSelectElement;
+
+document.getElementById("saveRule")?.addEventListener("click",async()=>{
+ const value=normalizeDomain(ruleDomainEl.value);
+ const allowed=["awareness","deliberation","pause","delay","commitment","lock"];
+ if(!value||!allowed.includes(ruleLevelEl.value)){
+  statusEl.textContent="Enter a valid site and intervention level.";
+  return;
+ }
+ const stored=await chrome.storage.local.get("rules");
+ const rules=Array.isArray(stored.rules)?stored.rules:readonly [];
+ const next=[...rules.filter((rule:unknown)=>typeof rule==="object"&&rule!==null&&(rule as Record<string,unknown>).value!==value),
+  {id:"rule_"+crypto.randomUUID(),target:"site",value,enabled:true,minimumIntervention:ruleLevelEl.value}
+ ].slice(0,100);
+ await chrome.storage.local.set({rules:next});
+ ruleDomainEl.value="";
+ statusEl.textContent="Site rule saved on this device.";
+});
