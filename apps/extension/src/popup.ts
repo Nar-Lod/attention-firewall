@@ -25,8 +25,8 @@ Promise.all([getLocalState(),chrome.storage.local.get("webProtectionEnabled")]).
   budgetEl.value=value.budgetMinutes?String(value.budgetMinutes):"";
  }
  modeEl.value=state.protectionMode;
- renderSummary(result.dailySummary as DailySummary|undefined);
- renderWebStatus(Boolean(result.webProtectionEnabled));
+ renderSummary(state.dailySummary as DailySummary|undefined);
+ renderWebStatus(Boolean(permissionState.webProtectionEnabled));
 });
 
 document.getElementById("save")?.addEventListener("click",async()=>{
