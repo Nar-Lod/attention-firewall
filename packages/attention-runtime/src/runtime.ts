@@ -37,6 +37,13 @@ export class AttentionRuntime{
    successByIntervention:{...this.config.profile.successByIntervention},
    attemptsByIntervention:{...this.config.profile.attemptsByIntervention}
   };
+ }
+
+ getInterventionProfile(){
+  return {
+   successByIntervention:{...this.config.profile.successByIntervention},
+   attemptsByIntervention:{...this.config.profile.attemptsByIntervention}
+  };
 }
 
  begin(target:string):RuntimeSession{
