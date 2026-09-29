@@ -2,7 +2,7 @@ import {AttentionRuntime} from "@attention-firewall/attention-runtime";
 import {DEFAULT_HISTORY,emptyDay,recordIntervention,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
 interface LocalIntent{label:string;targetDomains:string[];startedAt:number;purpose?:"work"|"study"|"communication"|"entertainment"|"rest"|"other";budgetMinutes?:number}
-interface LocalProfile{successByIntervention:Record<string,number>;attemptsByIntervention:Record<string,number>;rules:unknown[]}
+interface LocalProfile{successByIntervention:Record<string,number>;attemptsByIntervention:Record<string,number>}
 interface ActivitySample{type:"ACTIVITY_SAMPLE";scrollCount:number;interactionCount:number;elapsedSeconds:number;domain:string}
 interface SessionRuntimeState{domain:string;runtime:AttentionRuntime;lastInterventionAt:number}
 
@@ -91,7 +91,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
  const state=runtimes.get(tabId);
  const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","dailyHistory","rules"]);
  const intent=stored.currentIntent as LocalIntent|undefined;
- const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{},rules:[]};
+ const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{}};
  const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
 
  let current=state;
@@ -99,6 +99,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
   current={domain:message.domain,lastInterventionAt:0,runtime:new AttentionRuntime({
    protectionMode,
    profile,
+   rules:Array.isArray(stored.rules)?stored.rules as never[]:[],
    intent:intent?{
     id:intent.startedAt.toString(36),
     label:intent.label,
@@ -115,6 +116,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
  current.runtime.setConfig({
   protectionMode,
   profile,
+  rules:Array.isArray(stored.rules)?stored.rules as never[]:[],
   intent:intent?{
    id:intent.startedAt.toString(36),label:intent.label,purpose:intent.purpose??"other",
    targetDomains:intent.targetDomains,startedAt:intent.startedAt,budgetMinutes:intent.budgetMinutes
