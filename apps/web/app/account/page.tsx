@@ -2,57 +2,32 @@
 
 import {useEffect,useMemo,useState} from "react";
 import {EncryptedIndexedDbStore} from "@attention-firewall/secure-browser-store";
-import type {SecurityEvent} from "@attention-firewall/security-audit";
 
-interface LocalState{
- version:2;
+interface LocalProfile{
+ version:1;
  protectionMode:"adaptive"|"strict";
- securityEvents:SecurityEvent[];
+ privacy:{telemetryOptIn:boolean;researchOptIn:boolean};
  currentIntent?:{label:string;purpose:string;targetDomains:string[];budgetMinutes?:number};
  rules:unknown[];
  commitments:unknown[];
+ interventionProfile:unknown;
 }
 
 export default function AccountPage(){
- const store=useMemo(()=>new EncryptedIndexedDbStore<LocalState>("extension-state-v2","attention-firewall-extension-state"),[]);
- const [state,setState]=useState<LocalState|null>(null);
-
+ const store=useMemo(()=>new EncryptedIndexedDbStore<LocalProfile>("profile-v2","attention-firewall-web-profile"),[]);
+ const [state,setState]=useState<LocalProfile|null>(null);
  useEffect(()=>{void store.get().then(setState);},[store]);
 
- const events=state?.securityEvents??[];
-
  return <main className="privacy-page">
-  <a href="/">← Dashboard</a>
+  <nav><a href="/">← Dashboard</a> · <a href="/insights">Insights</a> · <a href="/privacy">Privacy</a></nav>
   <p className="eyebrow" style={{marginTop:32}}>ACCOUNT & DEVICE SECURITY</p>
   <h1>Your security boundary</h1>
-  <p className="lead">Attention Firewall keeps behavioral protection local. Account services, when enabled, handle identity and device access separately.</p>
-
+  <p className="lead">Behavioral protection remains local. Account infrastructure is separate and is only activated when a real authenticated service is configured.</p>
   <section className="privacy-grid">
-   <div className="privacy-card">
-    <div className="label">PASSKEYS</div>
-    <h2>Passwordless account</h2>
-    <p>Production account authentication uses WebAuthn/passkeys. Private key material stays with your authenticator.</p>
-    <button type="button" disabled>Passkey setup requires configured account service</button>
-   </div>
-
-   <div className="privacy-card">
-    <div className="label">DEVICE</div>
-    <h2>Local protection</h2>
-    <p>{state?"Your local vault is available in this browser.":"Local vault state has not been created yet."}</p>
-    <p>Protection mode: <strong>{state?.protectionMode??"adaptive"}</strong></p>
-   </div>
-
-   <div className="privacy-card">
-    <div className="label">SECURITY HISTORY</div>
-    <h2>Control events</h2>
-    <p>Only security/control events are shown here. Browsing and attention history are excluded.</p>
-    <div className="bar-list">
-     {!events.length&&<p className="muted">No security events recorded yet.</p>}
-     {events.map(event=><div key={event.id} className="bar-row"><span>{new Date(event.occurredAt).toLocaleDateString()}</span><div><b>{event.type}</b></div><b>{event.outcome}</b></div>)}
-    </div>
-   </div>
+   <div className="privacy-card"><div className="label">LOCAL VAULT</div><h2>{state?"Encrypted vault active":"Not initialized yet"}</h2><p>Your browser stores the protection profile in an encrypted IndexedDB vault.</p><p>Protection mode: <strong>{state?.protectionMode??"adaptive"}</strong></p></div>
+   <div className="privacy-card"><div className="label">PASSKEY ACCOUNT</div><h2>Passwordless authentication</h2><p>Production auth is passkey-first. The server never receives private key material or behavioral history.</p><button type="button" disabled>Account service not configured in preview</button></div>
+   <div className="privacy-card"><div className="label">DEVICE BOUNDARY</div><h2>Revocable device identity</h2><p>When account services are enabled, each device gets a random revocable identifier and sessions use Secure, HttpOnly cookies.</p></div>
   </section>
-
-  <footer><span>Behavioral history is not part of account authentication.</span><a href="/privacy">Privacy Center →</a></footer>
+  <footer><span>Security metadata is separate from attention history.</span><a href="/privacy">Privacy Center →</a></footer>
  </main>;
 }
