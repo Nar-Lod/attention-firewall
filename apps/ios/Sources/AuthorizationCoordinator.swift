@@ -11,21 +11,30 @@ final class AuthorizationCoordinator: ObservableObject {
         status = center.authorizationStatus
     }
 
+    var isApproved: Bool {
+        status == .approved || status == .approvedWithDataAccess
+    }
+
+    var hasNonTokenizedDataAccess: Bool {
+        status == .approvedWithDataAccess
+    }
+
     func requestIndividualAuthorization() async -> Bool {
         do {
             try await center.requestAuthorization(for: .individual)
             status = center.authorizationStatus
-            return status == .approved || status == .approvedWithDataAccess
+            return isApproved
         } catch {
             status = center.authorizationStatus
             return false
         }
     }
 
-    func revokeAuthorization() async {
-        await withCheckedContinuation { continuation in
-            center.revokeAuthorization { _ in continuation.resume() }
+    func revokeAuthorization() {
+        center.revokeAuthorization { _ in
+            Task { @MainActor in
+                self.status = self.center.authorizationStatus
+            }
         }
-        status = center.authorizationStatus
     }
 }
