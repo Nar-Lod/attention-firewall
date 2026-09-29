@@ -10,7 +10,7 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r --filter "!@attention-firewall/web" build && pnpm -r typecheck",
+    "typecheck": "pnpm -r --filter \"!@attention-firewall/web\" build && pnpm -r typecheck",
     "security:extension": "node scripts/check-extension-security.mjs",
     "dev": "pnpm --filter @attention-firewall/web dev"
   },
