@@ -3,7 +3,7 @@ import {parseInterventionProfile} from "@attention-firewall/local-store";
 import {sanitizeIntent,type IntentEnvelope} from "@attention-firewall/intent-engine";
 import {validateRuntimeSample} from "@attention-firewall/runtime-protocol";
 import {validateRules,type PolicyRule} from "@attention-firewall/policy-engine";
-import {DEFAULT_HISTORY,emptyDay,recordInterventionOutcome,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
+import {DEFAULT_HISTORY,addDailySeconds,emptyDay,recordInterventionOutcome,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
 interface ActivitySample{type:"ACTIVITY_SAMPLE";scrollCount:number;interactionCount:number;elapsedSeconds:number;domain:string}
 interface SessionStart{type:"SESSION_START";domain:string}
