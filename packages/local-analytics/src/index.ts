@@ -24,3 +24,4 @@ export function recordIntervention(summary:DailySummary,accepted:boolean):DailyS
 export function recordDriftEpisode(summary:DailySummary):DailySummary{
  return {...summary,driftEpisodes:Math.min(summary.driftEpisodes+1,1000)};
 }
+export * from "./history.js";
