@@ -50,7 +50,7 @@ export async function createRegistrationOptions(
   userID:isoUint8Array.fromUTF8String(user.webauthnUserID),
   attestationType:"none",
   supportedAlgorithmIDs:[-7,-257],
-  excludeCredentials:existingPasskeys.map(passkey=>({id:passkey.id,transports:passkey.transports})),
+  excludeCredentials:existingPasskeys.map(passkey=>passkey.transports?.length?{id:passkey.id,transports:passkey.transports}:{id:passkey.id}),
   authenticatorSelection:{
    residentKey:"required",
    userVerification:"preferred"
@@ -81,7 +81,7 @@ export async function createAuthenticationOptions(
 ):Promise<AuthenticationOptionsResult>{
  const options=await generateAuthenticationOptions({
   rpID,
-  allowCredentials:passkeys.map(passkey=>({id:passkey.id,transports:passkey.transports})),
+  allowCredentials:passkeys.map(passkey=>passkey.transports?.length?{id:passkey.id,transports:passkey.transports}:{id:passkey.id}),
   userVerification:"required"
  });
  return {options,challenge:options.challenge};
