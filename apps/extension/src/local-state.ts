@@ -44,7 +44,8 @@ export async function getLocalState():Promise<ExtensionState>{
   const cleaned=sweepLocalState({
    dailyHistory:merged.dailyHistory??{version:1,days:[]},
    commitments:merged.commitments,
-   interventionProfile:merged.interventionProfile
+   interventionProfile:merged.interventionProfile,
+   securityEvents:merged.securityEvents
   },Date.now(),30);
   const next:ExtensionState={...merged,...cleaned};
   if(JSON.stringify(next)!==JSON.stringify(merged))await store.set(next);
@@ -70,7 +71,8 @@ export async function getLocalState():Promise<ExtensionState>{
  const cleaned=sweepLocalState({
   dailyHistory:migrated.dailyHistory??{version:1,days:[]},
   commitments:migrated.commitments,
-  interventionProfile:migrated.interventionProfile
+  interventionProfile:migrated.interventionProfile,
+  securityEvents:migrated.securityEvents
  },Date.now(),30);
 
  migrated={...migrated,...cleaned};
