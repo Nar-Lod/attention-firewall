@@ -33,7 +33,7 @@ describe("AttentionRuntime",()=>{
  it("counts intervention shown separately from outcome",()=>{
   const rt=new AttentionRuntime(config());
   rt.begin("example.com");
-  const r=rt.sample({elapsedSeconds:600,interactions:0,scrolls:300,domain:"example.com",lateNightRisk:1});
+  const r=rt.sample({elapsedSeconds:600,interactions:0,scrolls:300,scrollBursts:12,domain:"example.com",lateNightRisk:1});
   expect(r.dailySummary.interventionsShown).toBeGreaterThanOrEqual(1);
   const before=r.dailySummary.interventionsAccepted;
   if(r.intervention!=="none")rt.respond(r.intervention,"exited");
