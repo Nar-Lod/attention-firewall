@@ -132,9 +132,11 @@ export default function Home(){
   if(!runtime){setStatus("Start a session first.");return;}
   const target=normalizeDomain(domains.split(",")[0]??"");
   const result=runtime.sample({
-   elapsedSeconds:60,
+   elapsedSeconds:passive?600:60,
    interactions:passive?0:1,
-   scrolls:passive?40:6,
+   scrolls:passive?300:6,
+   scrollBursts:passive?12:1,
+   scrollDirectionChanges:passive?8:0,
    domain:target,
    lateNightRisk:0
   });
@@ -202,9 +204,16 @@ export default function Home(){
    <div>
     <p className="eyebrow">YOUR ATTENTION</p>
     <h1>Protect your intention.<br/><em>Not just your time.</em></h1>
-    <p className="sub">Detailed attention state is processed locally. The cloud is not required for the protection loop.</p><div className="hero-badges"><span>LOCAL ENGINE</span><span>ENCRYPTED LOCAL STATE</span><span>NO BEHAVIORAL CLOUD LOG</span></div>
+    <p className="sub">Detailed attention state is processed locally. The cloud is not required for the protection loop.</p><p className="preview-note">Preview mode exercises the same local runtime used by the browser extension. No cloud account is required.</p><div className="hero-badges"><span>LOCAL ENGINE</span><span>ENCRYPTED LOCAL STATE</span><span>NO BEHAVIORAL CLOUD LOG</span></div>
    </div>
    <div className="score"><span>DRIFT SCORE</span><b>{driftRisk}</b><small>{assessment?.state??"waiting"}</small></div>
+  </section>
+
+  <section className="today-strip">
+   <div><span>PASSIVE TODAY</span><b>{Math.round(summary.passiveSeconds/60)}m</b></div>
+   <div><span>INTENTIONAL</span><b>{Math.round(summary.intentionalSeconds/60)}m</b></div>
+   <div><span>RECOVERED</span><b>{Math.round(summary.attentionRecoveredSeconds/60)}m</b></div>
+   <div><span>DRIFT EPISODES</span><b>{summary.driftEpisodes}</b></div>
   </section>
 
   <section className="grid">
