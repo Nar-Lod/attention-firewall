@@ -225,7 +225,7 @@ export default function Home(){
    <div>
     <p className="eyebrow">YOUR ATTENTION</p>
     <h1>Protect your intention.<br/><em>Not just your time.</em></h1>
-    <p className="sub">Detailed attention state is processed locally. The cloud is not required for the protection loop.</p><p className="preview-note">Preview mode exercises the same local runtime used by the browser extension. No cloud account is required.</p><div className="hero-badges"><span>LOCAL ENGINE</span><span>ENCRYPTED LOCAL STATE</span><span>NO BEHAVIORAL CLOUD LOG</span></div>
+    <p className="sub">Detailed attention state is processed locally. The cloud is not required for the protection loop.</p><p className="preview-note">The dashboard is a control plane. Browser enforcement runs locally through the extension; these controls preview the decision loop without uploading behavior.</p><div className="hero-badges"><span>LOCAL ENGINE</span><span>ENCRYPTED LOCAL STATE</span><span>NO BEHAVIORAL CLOUD LOG</span></div>
    </div>
    <div className="score"><span>DRIFT SCORE</span><b>{driftRisk}</b><small>{assessment?.state??"waiting"}</small></div>
   </section>
@@ -254,13 +254,13 @@ export default function Home(){
    </article>
 
    <article className="card">
-    <div className="label">LIVE ENGINE</div>
+    <div className="label">LOCAL SESSION</div>
     <div className="session-header"><div><span className="session-time">{sessionMinutes}:{sessionRemainder}</span><small>{sessionBudget?`${sessionProgress}% of ${sessionBudget} min budget`:"open session"}</small></div>{runtime&&<button className="secondary-button session-end" onClick={()=>{setRuntime(null);setAssessment(null);setDecision("none");setStatus("Local session ended. Your saved history remains on this device.");}}>End session</button>}</div>
     {runtime&&sessionBudget>0&&<div className="session-progress"><div style={{width:`${sessionProgress}%`}}/></div>}
     <h2>{decision}</h2>
     <p>{assessment?.reasons.length?assessment.reasons.join(" · "):"No intervention is active."}</p>
-    <button onClick={()=>sample(false)}>Simulate intentional minute</button>
-    <button onClick={()=>sample(true)} style={{marginLeft:8}}>Simulate passive scroll</button>
+    <button onClick={()=>sample(false)}>Preview intentional minute</button>
+    <button onClick={()=>sample(true)} style={{marginLeft:8}}>Preview passive drift</button>
     {decision!=="none"&&<div style={{marginTop:16}}><button onClick={()=>respond("exited")}>Exit & recover</button><button onClick={()=>respond("continued")} className="secondary-button">Continue intentionally</button></div>}
    </article>
 
