@@ -1,7 +1,7 @@
 export interface LocalProfile{
  version:1;
- intent?:{id:string;label:string;purpose:string;startedAt:number};
- rules:Array<{id:string;target:string;enabled:boolean;level:"awareness"|"pause"|"delay"|"lock"}>;
+ intent?:{id:string;label:string;purpose:"work"|"study"|"communication"|"entertainment"|"rest"|"other";startedAt:number;budgetMinutes?:number;targetDomains:string[]};
+ rules:Array<{id:string;target:"site"|"category"|"all-web";value:string;enabled:boolean;minimumIntervention:"awareness"|"deliberation"|"pause"|"delay"|"commitment"|"lock";startMinute?:number;endMinute?:number}>;
  interventionProfile:{successByIntervention:Record<string,number>;attemptsByIntervention:Record<string,number>};
  privacy:{telemetryOptIn:boolean;researchOptIn:boolean};
 }
