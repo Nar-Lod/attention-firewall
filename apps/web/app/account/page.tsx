@@ -25,7 +25,7 @@ export default function AccountPage(){
   <p className="lead">Behavioral protection remains local. Account infrastructure is separate and is only activated when a real authenticated service is configured.</p>
   <section className="privacy-grid">
    <div className="privacy-card"><div className="label">LOCAL VAULT</div><h2>{state?"Encrypted vault active":"Not initialized yet"}</h2><p>Your browser stores the protection profile in an encrypted IndexedDB vault.</p><p>Protection mode: <strong>{state?.protectionMode??"adaptive"}</strong></p></div>
-   <div className="privacy-card"><div className="label">PASSKEY ACCOUNT</div><h2>Passwordless authentication</h2><p>Production auth is passkey-first. The server never receives private key material or behavioral history.</p><button type="button" disabled>Account service not configured in preview</button></div>
+   <div className="privacy-card"><div className="label">PASSKEY ACCOUNT</div><h2>Passwordless authentication</h2><p>Production auth is passkey-first. The server never receives private key material or behavioral history.</p><a href="/auth"><button type="button">Open passkey account</button></a></div>
    <div className="privacy-card"><div className="label">DEVICE BOUNDARY</div><h2>Revocable device identity</h2><p>When account services are enabled, each device gets a random revocable identifier and sessions use Secure, HttpOnly cookies.</p></div>
   </section>
   <footer><span>Security metadata is separate from attention history.</span><a href="/privacy">Privacy Center →</a></footer>
