@@ -2,6 +2,7 @@ import {AttentionRuntime} from "@attention-firewall/attention-runtime";
 import {parseInterventionProfile} from "@attention-firewall/local-store";
 import {sanitizeIntent,type IntentEnvelope} from "@attention-firewall/intent-engine";
 import {validateRuntimeSample} from "@attention-firewall/runtime-protocol";
+import {buildAttentionTwin} from "@attention-firewall/personalization-engine";
 import {validateRules,type PolicyRule} from "@attention-firewall/policy-engine";
 import {DEFAULT_HISTORY,addDailySeconds,emptyDay,recordInterventionOutcome,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
@@ -113,6 +114,8 @@ async function handleActivity(tabId:number,message:ActivitySample){
  const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","dailyHistory","rules"]);
  const intent=sanitizeIntent(stored.currentIntent);
  const profile=parseInterventionProfile(stored.interventionProfile);
+ const history=Array.isArray((stored.dailyHistory as {days?:unknown[]}|undefined)?.days)?(stored.dailyHistory as {days?:unknown[]}).days as never[]:[];
+ const attentionTwin=buildAttentionTwin(history as any,profile);
  const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
 
  let current=state;
@@ -121,6 +124,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
    protectionMode,
    profile,
    rules:safeRules(stored.rules),
+   attentionTwin,
    intent:intent as IntentEnvelope|undefined
   },undefined,typeof stored.dailySummary==="object"&&stored.dailySummary?stored.dailySummary:undefined)};
   runtimes.set(tabId,current);
@@ -134,6 +138,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
   protectionMode,
   profile,
   rules:safeRules(stored.rules),
+  attentionTwin,
   intent:intent as IntentEnvelope|undefined
  });
  if(typeof stored.dailySummary==="object"&&stored.dailySummary){
