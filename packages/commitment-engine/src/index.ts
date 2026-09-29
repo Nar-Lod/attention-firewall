@@ -57,3 +57,17 @@ function normalizeDomain(value:string){
  try{return new URL("https://"+value.trim().replace(/^https?:\/\//,"")).hostname.replace(/^www\./,"").toLowerCase().slice(0,253);}
  catch{return "";}
 }
+
+
+const interventionOrder:Intervention[]=["none","awareness","deliberation","pause","delay","commitment","lock"];
+
+export function applyCommitments(intervention:Intervention,commitments:Commitment[],domain:string,now=Date.now()):Intervention{
+ let selected=intervention;
+ for(const commitment of commitments){
+  if(!commitmentApplies(commitment,domain,now))continue;
+  const currentIndex=interventionOrder.indexOf(selected);
+  const minimumIndex=interventionOrder.indexOf(commitment.minimumIntervention);
+  if(minimumIndex>currentIndex)selected=commitment.minimumIntervention;
+ }
+ return selected;
+}
