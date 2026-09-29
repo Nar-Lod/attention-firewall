@@ -2,6 +2,7 @@ import {assessAttention,chooseIntervention,detectPassiveScrollLoop} from "@atten
 import {addDailySeconds,emptyDay,recordDriftEpisode,recordIntervention,todayKey,type DailySummary} from "@attention-firewall/local-analytics";
 import {recommendRecovery} from "@attention-firewall/recovery-engine";
 import type {RuntimeConfig,RuntimeDecision,RuntimeSession} from "./types.js";
+import {budgetStatus,matchDomain,type IntentEnvelope} from "@attention-firewall/intent-engine";
 
 const sessionTimeoutMs=5*60_000;
 
@@ -29,7 +30,7 @@ export class AttentionRuntime{
   return this.session;
  }
 
- sample(sample:{elapsedSeconds:number;interactions:number;scrolls:number;intentMatch:number;outsideIntent:boolean;contextSwitches?:number;notificationLaunch?:boolean;lateNightRisk?:number}):RuntimeDecision{
+ sample(sample:{elapsedSeconds:number;interactions:number;scrolls:number;domain?:string;intentMatch?:number;outsideIntent?:boolean;contextSwitches?:number;notificationLaunch?:boolean;lateNightRisk?:number}):RuntimeDecision{
   if(!this.session)this.begin("local");
   const session=this.session!;
   const now=this.clock.now();
@@ -40,8 +41,10 @@ export class AttentionRuntime{
   session.interactionCount=Math.min(session.interactionCount+Math.max(0,Math.min(sample.interactions,500)),10_000);
   session.scrollCount=Math.min(session.scrollCount+Math.max(0,Math.min(sample.scrolls,500)),10_000);
   session.contextSwitches=Math.min(session.contextSwitches+Math.max(0,Math.min(sample.contextSwitches??0,50)),1_000);
-  session.intentMatch=Math.max(0,Math.min(sample.intentMatch,1));
-  session.outsideIntent=Boolean(sample.outsideIntent);
+  const intent=this.config.intent as IntentEnvelope|undefined;
+  const intentResult=sample.domain?matchDomain(intent,sample.domain):undefined;
+  session.intentMatch=sample.intentMatch??(intentResult?.confidence??1);
+  session.outsideIntent=sample.outsideIntent??(intentResult?!intentResult.matches:false);
   session.notificationLaunch=Boolean(sample.notificationLaunch);
   session.lateNightRisk=Math.max(0,Math.min(sample.lateNightRisk??0,1));
 
