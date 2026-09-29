@@ -5,7 +5,6 @@ Security is a first-class product requirement.
 ## Security objectives
 
 Protect:
-
 1. identity/account data;
 2. local behavioral data;
 3. user commitments and rules;
@@ -13,93 +12,83 @@ Protect:
 5. extension privileges;
 6. recovery/export artifacts.
 
-## Security model
+## Local-first security
 
-### Local-first
+Detailed attention data is processed and retained locally. The cloud is not the behavioral source of truth.
 
-Detailed attention data is stored locally and processed locally. Central compromise must not expose a behavioral history that the server does not possess.
+### Local encryption
 
-### Encryption
+- Mobile: use OS secure storage/Keystore/Keychain for encryption keys.
+- Browser: ordinary operational state is protected by the browser profile; encrypted export uses AES-GCM with PBKDF2-HMAC-SHA-256.
+- Encrypted export uses a 600,000-iteration PBKDF2 work factor for the user passphrase, matching the current OWASP PBKDF2-HMAC-SHA-256 recommendation; performance should still be measured on target devices. citeturn847251search0
+- Never put encryption keys in logs, analytics, URLs or source control.
 
-- Mobile local databases: platform-backed encryption plus application-level encryption for especially sensitive records where practical.
-- Browser: rely on browser profile/OS protection for ordinary local state; provide encrypted export using Web Crypto.
-- Secrets: keep encryption keys or refresh credentials in platform secure storage/keychain, never in application logs or analytics.
-
-### Network
+## Authentication and network
 
 - HTTPS only.
 - HSTS on the web origin.
-- Secure, HttpOnly, SameSite cookies for web sessions.
+- Secure, HttpOnly, SameSite cookies for browser sessions.
 - No secrets in URLs.
-- Strict request schema validation.
-- Short-lived access credentials and refresh-token rotation when accounts are introduced.
+- Short-lived access sessions.
+- Refresh-token rotation and reuse detection.
+- Passkeys/WebAuthn should be preferred for production.
+- MFA/security keys for maintainers and administrators.
+- Rate limiting and account/device revocation.
 
-### Web application
+## Web application
 
-Apply OWASP ASVS 5.0 controls as the baseline verification framework. The current ASVS is 5.0.0. citeturn734888search9
+Use OWASP ASVS 5.0 as the web security verification baseline.
 
-Required controls include:
-- output encoding and safe DOM APIs;
-- CSRF protection where cookies are used;
+Required:
+- safe DOM APIs and output encoding;
+- CSRF protection where cookie sessions are used;
 - authentication throttling;
-- authorization on every protected server action;
+- authorization on every protected action;
+- schema validation;
 - parameterized database access;
 - dependency and secret scanning;
 - security headers;
 - safe error handling;
-- audit logging that excludes behavioral content.
+- security logs that exclude behavioral content.
 
-### Browser extension
+## Browser extension
 
-- Manifest V3.
-- No remotely hosted executable code.
-- No eval/new Function.
+Manifest V3.
 - Minimal permissions.
+- No remote executable code.
 - Strict extension CSP.
-- Content-script messages are treated as untrusted.
+- No eval/new Function/document.write/unsafe innerHTML.
+- Content-script messages are untrusted and validated.
 - No secrets sent to content scripts.
-- No sensitive history sent to web pages.
-- No externally connectable origins unless explicitly required.
+- No external pages can modify privileged extension state without validation.
 
-Chrome's extension security guidance specifically recommends minimal permissions, HTTPS, explicit CSP, avoiding innerHTML/document.write, and validating content-script inputs. citeturn734888search2
+## Supply chain
 
-### Supply chain
-
-- Pin lockfile versions.
-- Automated dependency audit.
-- Dependabot/Renovate.
-- Secret scanning.
-- CodeQL.
-- Protected main branch.
-- 2FA/security keys for maintainers.
-- Release signing where supported.
-
-Chrome also notes that compromised developer accounts can push malicious extension updates, making account protection critical. citeturn734888search2
+- lockfile committed before production;
+- Dependabot/dependency updates;
+- CodeQL;
+- dependency review;
+- secret scanning;
+- protected main branch;
+- MFA/security keys for maintainers;
+- signed/integrity-checked releases where practical.
 
 ## Privacy-security boundary
 
-Security logs must not become a covert behavioral analytics system.
+Security logs must not become a covert behavioral database.
 
-Do not log:
-- URLs
-- page titles
-- search terms
-- messages
-- screenshots
-- exact usage timelines
-- raw attention features
-
-Log only necessary security events such as authentication failures, token rotation failures, device revocation and application errors, with short retention.
+Do not log URLs, page titles, search terms, messages, screenshots, raw usage timelines or raw attention features.
 
 ## Incident response
 
-Production must have:
-- credential revocation;
-- device/session revocation;
+Production requires:
+- session/device revocation;
+- credential rotation;
 - breach detection;
 - user notification procedure;
-- backup/restore tests;
-- dependency emergency patch process;
-- extension rollback/release process.
+- secure backups;
+- restore testing;
+- emergency dependency patching;
+- extension rollback/release controls.
 
-This document is an engineering baseline and should be reviewed against the actual production threat model and legal requirements.
+This is an engineering baseline, not legal advice.
