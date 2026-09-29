@@ -1,4 +1,5 @@
 import {assessAttention,chooseIntervention} from "@attention-firewall/attention-engine";
+import {addDailySeconds,emptyDay,recordDriftEpisode,recordIntervention,todayKey} from "@attention-firewall/local-analytics";
 
 interface LocalIntent{label:string;targetDomains:string[];startedAt:number}
 interface LocalProfile{successByIntervention:Record<string,number>;attemptsByIntervention:Record<string,number>}
@@ -36,6 +37,7 @@ chrome.runtime.onMessage.addListener((message:unknown,sender)=>{
     session.scrollCount=Math.min(session.scrollCount+message.scrollCount,1000);
     session.interactionCount=Math.min(session.interactionCount+message.interactionCount,1000);
     session.elapsedReported=Math.min(session.elapsedReported+message.elapsedSeconds,1800);
+    void recordSampleAnalytics(sender.tab.id,message.elapsedSeconds,message.interactionCount,message.scrollCount);
     if(message.interactionCount===0&&message.scrollCount>0){
       session.passiveSeconds=Math.min(session.passiveSeconds+message.elapsedSeconds,1800);
     }
@@ -74,6 +76,7 @@ async function evaluate(tabId:number,session:Session){
   });
   if(decision.intervention!=="none"){
     session.lastInterventionAt=Date.now();
+    void recordInterventionShown();
     await chrome.tabs.sendMessage(tabId,{type:"ATTENTION_INTERVENTION",intervention:decision.intervention}).catch(()=>{});
   }
 }
@@ -83,6 +86,11 @@ async function recordOutcome(intervention:string,outcome:"continued"|"exited"){
   const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{}};
   profile.attemptsByIntervention[intervention]=(profile.attemptsByIntervention[intervention]??0)+1;
   if(outcome==="exited")profile.successByIntervention[intervention]=(profile.successByIntervention[intervention]??0)+1;
+  const storedSummary=await chrome.storage.local.get("dailySummary");
+  let summary=storedSummary.dailySummary as ReturnType<typeof emptyDay>|undefined;
+  summary=summary&&summary.date===todayKey()?summary:emptyDay();
+  summary=recordIntervention(summary,outcome==="exited");
+  await chrome.storage.local.set({dailySummary:summary});
   await chrome.storage.local.set({interventionProfile:profile});
 }
 
