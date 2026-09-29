@@ -65,7 +65,7 @@ export class PostgresAuthStore implements VaultRepository,ChallengeStore,Passkey
   );
  }
 
- async put(key:string,challenge:string,expiresAt:number){await this.putChallenge(key,challenge,expiresAt)}
+ async saveChallenge(key:string,challenge:string,expiresAt:number){await this.putChallenge(key,challenge,expiresAt)}
 
  async take(key:string,now:number):Promise<string|null>{
   const client=await this.pool.connect();
