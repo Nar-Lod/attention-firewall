@@ -1,0 +1,11 @@
+{
+  "manifest_version":3,
+  "name":"Attention Firewall",
+  "version":"0.1.0",
+  "description":"Local-first attention interventions for the web.",
+  "permissions":["storage","tabs"],
+  "host_permissions":["<all_urls>"],
+  "background":{"service_worker":"background.js","type":"module"},
+  "action":{"default_title":"Attention Firewall"},
+  "options_page":"options.html"
+}
