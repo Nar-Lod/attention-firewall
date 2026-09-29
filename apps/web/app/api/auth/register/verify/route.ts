@@ -21,7 +21,7 @@ export async function POST(request:Request){
  const store=new PostgresAuthStore(databaseUrl);
  try{
   const user={id:flow.accountId,username:"af_"+flow.accountId.replaceAll("-","").slice(0,20),webauthnUserID:flow.webauthnUserID};
-  const passkey=await completeRegistration(user,store,store,response,{rpName:"Attention Firewall",rpID,origin,challengeTtlMs:5*60_000});
+  const passkey=await completeRegistration(user,store,store,response,{rpName:"Attention Firewall",rpID,origin,challengeTtlMs:5*60_000},Date.now(),false);
   const deviceId=randomUUID();
   const sessionResult=issueSession(flow.accountId,deviceId);
   await store.registerAccount({
