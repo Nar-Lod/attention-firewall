@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Attention Firewall</string>
+    <string name="accessibility_description">Shows locally configured attention interventions without reading screen content.</string>
+</resources>
