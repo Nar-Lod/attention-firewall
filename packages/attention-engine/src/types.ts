@@ -7,7 +7,7 @@ export interface Intent {
 }
 export interface BehaviorFeatures {
   sessionSeconds:number; repeatedOpens:number; recentReopens:number; passiveSeconds:number;
-  interactionRate:number; scrollEventsPerMinute?:number; contextSwitches:number; declaredIntentMatch:number; outsideIntent:boolean;
+  interactionRate:number; scrollEventsPerMinute?:number; scrollBursts?:number; scrollDirectionChanges?:number; scrollDistancePerMinute?:number; contextSwitches:number; declaredIntentMatch:number; outsideIntent:boolean;
   lateNightRisk:number; notificationLaunch:boolean; previousInterventionIgnored:boolean;
 }
 export interface AttentionAssessment { score:number; state:AttentionState; reasons:string[]; }
