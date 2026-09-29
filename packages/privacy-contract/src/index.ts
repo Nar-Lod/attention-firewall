@@ -23,8 +23,10 @@ function boundedString(value:unknown,max:number,label:string):string{
 export function validateTelemetry(input:unknown):CoarseTelemetry{
   if(!input||typeof input!=="object")throw new Error("invalid telemetry");
   const value=input as Record<string,unknown>;
+  const allowed=new Set(["schemaVersion","kind","clientVersion","engineVersion","platform","intervention","outcome","durationBucket"]);
   for(const key of Object.keys(value)){
     if(forbidden.some(x=>key.toLowerCase().includes(x)))throw new Error("forbidden telemetry field: "+key);
+    if(!allowed.has(key))throw new Error("unknown telemetry field: "+key);
   }
   if(value.schemaVersion!==1)throw new Error("unsupported schema");
   const kind=boundedString(value.kind,40,"kind") as TelemetryKind;
