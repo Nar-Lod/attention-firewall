@@ -112,7 +112,7 @@ async function unregisterDetector(){
 
 async function handleActivity(tabId:number,message:ActivitySample){
  const state=runtimes.get(tabId);
- const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","dailyHistory","rules"]);
+ const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","dailyHistory","rules","commitments"]);
  const intent=sanitizeIntent(stored.currentIntent);
  const profile=parseInterventionProfile(stored.interventionProfile);
  const savedHistory=stored.dailyHistory as DailyHistory|undefined;
@@ -127,6 +127,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
    profile,
    rules:safeRules(stored.rules),
    attentionTwin,
+   commitments:parseCommitments(stored.commitments),
    intent:intent as IntentEnvelope|undefined
   },undefined,typeof stored.dailySummary==="object"&&stored.dailySummary?stored.dailySummary:undefined)};
   runtimes.set(tabId,current);
@@ -141,6 +142,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
   profile,
   rules:safeRules(stored.rules),
   attentionTwin,
+  commitments:parseCommitments(stored.commitments),
   intent:intent as IntentEnvelope|undefined
  });
  if(typeof stored.dailySummary==="object"&&stored.dailySummary){
@@ -173,7 +175,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
 
 async function handleResponse(intervention:string,outcome:"continued"|"exited"){
  const stored=await chrome.storage.local.get(["interventionProfile","dailySummary","dailyHistory"]);
- const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{},rules:[]};
+ const profile=parseInterventionProfile(stored.interventionProfile);
  profile.attemptsByIntervention[intervention]=(profile.attemptsByIntervention[intervention]??0)+1;
  if(outcome==="exited")profile.successByIntervention[intervention]=(profile.successByIntervention[intervention]??0)+1;
 
@@ -187,14 +189,17 @@ async function handleResponse(intervention:string,outcome:"continued"|"exited"){
 }
 
 async function handleSessionStart(tabId:number,message:SessionStart){
- const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","commitments","rules"]);
+ const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","commitments","rules","dailyHistory"]);
  const intent=sanitizeIntent(stored.currentIntent);
  const profile=parseInterventionProfile(stored.interventionProfile);
+ const commitments=parseCommitments(stored.commitments);
+ const savedHistory=stored.dailyHistory as DailyHistory|undefined;
+ const attentionTwin=buildAttentionTwin(savedHistory?.version===1?savedHistory.days:[],profile);
  const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
  let state=runtimes.get(tabId);
  if(!state){
   state={domain:message.domain,lastInterventionAt:0,contextSwitches:0,runtime:new AttentionRuntime({
-   protectionMode,profile,rules:safeRules(stored.rules),intent:intent as IntentEnvelope|undefined
+   protectionMode,profile,rules:safeRules(stored.rules),attentionTwin,commitments,intent:intent as IntentEnvelope|undefined
   },undefined,typeof stored.dailySummary==="object"&&stored.dailySummary?stored.dailySummary:undefined)};
   runtimes.set(tabId,state);
   state.runtime.begin(message.domain);
