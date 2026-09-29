@@ -1,3 +1,5 @@
+export {};
+
 type Intervention="none"|"awareness"|"deliberation"|"pause"|"delay"|"commitment"|"lock";
 const RUNTIME_PROTOCOL_VERSION=1;
 declare global { interface Window { __ATTENTION_FIREWALL_INITIALIZED__?:boolean } }
