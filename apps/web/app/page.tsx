@@ -71,7 +71,7 @@ export default function Home(){
     setDomains(stored.intent.targetDomains.join(", "));
     setBudget(stored.intent.budgetMinutes?String(stored.intent.budgetMinutes):"");
    }
-   setMode("adaptive");
+   setMode(stored.protectionMode);
    setHistory(savedHistory);
    setSummary(savedHistory.days[0]??emptyDay());
    setLoaded(true);
@@ -117,7 +117,9 @@ export default function Home(){
 
   rt.begin(targetDomains[0]!);
   setRuntime(rt);
-  setProfile({...profile,intent:currentIntent});
+  const nextProfile={...profile,intent:currentIntent};
+  setProfile(nextProfile);
+  void profileStore.set(nextProfile);
   setAssessment(null);
   setDecision("none");
   setRecovery(0);
@@ -176,8 +178,12 @@ export default function Home(){
   if(!runtime||decision==="none"){setStatus("There is no active intervention.");return;}
   runtime.respond(decision,outcome);
   const nextProfile:Profile={...profile,interventionProfile:runtime.getInterventionProfile()};
+  const nextHistory=pruneHistory(upsertDay(history,runtime.getSummary()),30);
   setProfile(nextProfile);
+  setHistory(nextHistory);
+  setSummary(nextHistory.days[0]??emptyDay());
   void profileStore.set(nextProfile);
+  void historyStore.set(nextHistory);
   setStatus(outcome==="exited"?"Intervention accepted locally.":"Continuation recorded locally.");
  };
 
@@ -187,7 +193,7 @@ export default function Home(){
  return <main className="shell">
   <header>
    <div className="brand"><span className="mark">AF</span><div><strong>ATTENTION FIREWALL</strong><small>privacy-first attention control</small></div></div>
-   <span className="privacy">LOCAL MODE · ON</span>
+   <nav style={{display:"flex",gap:8,alignItems:"center"}}><a href="/insights">Insights</a><a href="/account">Security</a><a href="/privacy">Privacy</a><span className="privacy">LOCAL MODE · ON</span></nav>
   </header>
 
   <section className="hero">
