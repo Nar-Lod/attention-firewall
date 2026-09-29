@@ -53,7 +53,7 @@ export async function beginRegistration(
 }
 
 export async function completeRegistration(
- userId:string,
+ user:AuthUser,
  store:PasskeyStore,
  challenges:ChallengeStore,
  response:RegistrationResponseJSON,
