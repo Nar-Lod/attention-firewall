@@ -30,7 +30,7 @@ export function ruleApplies(rule:PolicyRule,context:PolicyContext):boolean{
  return false;
 }
 
-const order:Intervention[]=["none","awareness","deliberation","pause","delay","commitment","lock"];
+const order:Intervention[]=["none","awareness","deliberation","pause","delay","commitment","lock"];\nconst targets=new Set<RuleTarget>(["site","category","all-web"]);\nconst levels=new Set<Intervention>(order);
 export function applyPolicy(intervention:Intervention,rules:PolicyRule[],context:Omit<PolicyContext,"intervention">):Intervention{
  let selected=intervention;
  for(const rule of rules){
