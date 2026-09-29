@@ -85,12 +85,12 @@ class AttentionAccessibilityService : AccessibilityService() {
         val proposed = LocalAttentionEngine.intervention(assessment, hardLock)
         val minuteOfDay = hour * 60 + java.util.Calendar.getInstance().get(java.util.Calendar.MINUTE)
         val intervention = LocalPolicyEngine.enforce(proposed, packageName, minuteOfDay, policyStore.getRules())
-        if (intervention != Intervention.NONE) {
+        if (intervention != LocalLocalIntervention.NONE) {
             showIntervention(intervention)
         }
     }
 
-    private fun showIntervention(intervention: Intervention) {
+    private fun showIntervention(intervention: LocalIntervention) {
         if (overlay != null) return
 
         val root = LinearLayout(this).apply {
@@ -107,9 +107,9 @@ class AttentionAccessibilityService : AccessibilityService() {
 
         val body = TextView(this).apply {
             text = when (intervention) {
-                Intervention.LOCK -> "This app is locked by your local protection rule."
-                Intervention.DELAY -> "Take a deliberate pause before continuing."
-                Intervention.COMMITMENT -> "You set a stronger protection rule for this moment."
+                LocalIntervention.LOCK -> "This app is locked by your local protection rule."
+                LocalIntervention.DELAY -> "Take a deliberate pause before continuing."
+                LocalIntervention.COMMITMENT -> "You set a stronger protection rule for this moment."
                 else -> "Your current session may be drifting from your intention."
             }
             textSize = 15f
