@@ -1,5 +1,7 @@
 import {encryptJson} from "@attention-firewall/security-core";
 import {appendSecurityEvent,getLocalState,setLocalState} from "./local-state.js";
+import type {Commitment} from "@attention-firewall/commitment-engine";
+import type {PolicyRule} from "@attention-firewall/policy-engine";
 
 type Purpose="work"|"study"|"communication"|"entertainment"|"rest"|"other";
 interface LocalIntent{id:string;label:string;targetDomains:string[];startedAt:number;purpose:Purpose;budgetMinutes?:number}
@@ -39,7 +41,7 @@ document.getElementById("save")?.addEventListener("click",async()=>{
  if(!label){statusEl.textContent="Add an intent first.";return;}
 
  await setLocalState({
-  currentIntent:{id:crypto.randomUUID(),label,targetDomains,startedAt:Date.now(),purpose,budgetMinutes},
+  currentIntent:{id:crypto.randomUUID(),label,targetDomains,startedAt:Date.now(),purpose,...(budgetMinutes===undefined?{}:{budgetMinutes})},
   protectionMode:modeEl.value==="strict"?"strict":"adaptive"
  });
  statusEl.textContent="Saved on this device. Telemetry remains off by default.";
@@ -116,7 +118,7 @@ document.getElementById("saveRule")?.addEventListener("click",async()=>{
  const stored=await getLocalState();
  const rules=Array.isArray(stored.rules)?stored.rules:[];
  const next=[...rules.filter((rule:unknown)=>typeof rule==="object"&&rule!==null&&(rule as Record<string,unknown>).value!==value),
-  {id:"rule_"+crypto.randomUUID(),target:"site",value,enabled:true,minimumIntervention:ruleLevelEl.value}
+  {id:"rule_"+crypto.randomUUID(),target:"site" as const,value,enabled:true,minimumIntervention:ruleLevelEl.value as PolicyRule["minimumIntervention"]}
  ].slice(0,100);
  await setLocalState({rules:next});
  ruleDomainEl.value="";
@@ -139,13 +141,13 @@ document.getElementById("saveCommitment")?.addEventListener("click",async()=>{
  const stored=await getLocalState();
  const commitments=Array.isArray(stored.commitments)?stored.commitments:[];
  const now=Date.now();
- const commitment={
+ const commitment:Commitment={
   id:"commit_"+crypto.randomUUID(),
   label:"Protect "+target,
   targetDomains:[target],
   startAt:now,
   endAt:now+minutes*60_000,
-  minimumIntervention:level,
+  minimumIntervention:level as Commitment["minimumIntervention"],
   changeCooldownMinutes:Math.min(60,minutes),
   createdAt:now
  };
