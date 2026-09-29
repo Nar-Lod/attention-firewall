@@ -7,6 +7,10 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "declaration": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@attention-firewall/*": ["packages/*/src"]
+    }
   }
 }
