@@ -211,7 +211,7 @@ export default function Home(){
 
    <article className="card">
     <div className="label">LOCAL SESSION</div>
-    <div className="session-header"><div><span className="session-time">{sessionMinutes}:{sessionRemainder}</span><small>{sessionBudget?`${sessionProgress}% of ${sessionBudget} min budget`:"open session"}</small></div>{runtime&&<button className="secondary-button session-end" onClick={()=>{setRuntime(null);setAssessment(null);setDecision("none");setStatus("Local session ended. Your saved history remains on this device.");}}>End session</button>}</div>
+    <div className="session-header"><div><span className="session-time">{sessionMinutes}:{sessionRemainder}</span><small>{sessionBudget?`${sessionProgress}% of ${sessionBudget} min budget`:"open session"}</small></div>{runtime&&<button className="secondary-button session-end" onClick={()=>{setRuntime(null);setStatus("Local session ended. Your saved history remains on this device.");}}>End session</button>}</div>
     {runtime&&sessionBudget>0&&<div className="session-progress"><div style={{width:`${sessionProgress}%`}}/></div>}
     <h2>{runtime?"Session active":"Ready for a local session"}</h2>
     <p>{runtime?"Waiting for real device/browser signals. No behavioral state is fabricated by this dashboard.":"Start a local session to define the attention boundary. Enforcement signals come from the connected device or browser component."}
