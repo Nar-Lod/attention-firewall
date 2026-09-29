@@ -20,7 +20,8 @@ export function evaluateModel(observations:LabeledObservation[],model?:Attention
  const confusion:Record<string,Record<string,number>>={intentional:{intentional:0,drifting:0,"compulsive-risk":0},drifting:{intentional:0,drifting:0,"compulsive-risk":0},"compulsive-risk":{intentional:0,drifting:0,"compulsive-risk":0}};
  let correct=0;
  for(const observation of observations){
-  const predicted=assessAttention(observation.features,model).state;
+  const rawState=assessAttention(observation.features,model).state;
+  const predicted=rawState==="focused"||rawState==="intentional"?"intentional":rawState==="compulsive-risk"?"compulsive-risk":"drifting";
   const actual=observation.label;
   confusion[actual][predicted]= (confusion[actual][predicted]??0)+1;
   if(predicted===actual)correct++;
