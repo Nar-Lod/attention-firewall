@@ -18,6 +18,7 @@ class MainActivity : Activity() {
     private val usage by lazy { UsageSignalAdapter(this) }
     private val secureStore by lazy { SecureLocalStore(this) }
     private val protectedStore by lazy { ProtectedAppStore(this) }
+    private val devicePolicy by lazy { DevicePolicyStore(secureStore) }
     private val checks = linkedMapOf<String, CheckBox>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,6 +29,11 @@ class MainActivity : Activity() {
 
         findViewById<Button>(R.id.grantUsage).setOnClickListener {
             startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        }
+
+        findViewById<Button>(R.id.prepareLauncher).setOnClickListener {
+            devicePolicy.prepareLauncher()
+            status.text = "Launcher mode prepared locally. Android Home role has not been requested."
         }
 
         findViewById<Button>(R.id.hardProtection).setOnClickListener {
