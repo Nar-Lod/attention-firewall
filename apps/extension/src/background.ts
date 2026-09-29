@@ -191,6 +191,8 @@ async function handleSessionStart(tabId:number,message:SessionStart){
  }else if(state.domain!==message.domain){
   state.domain=message.domain;
   state.contextSwitches=Math.min(state.contextSwitches+1,1000);
+ }else{
+  state.runtime.reopen();
  }
 }
 
