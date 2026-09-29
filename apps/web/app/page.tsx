@@ -6,23 +6,39 @@ import {buildAttentionTwin} from "@attention-firewall/personalization-engine";
 import {emptyDay,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 import {EncryptedIndexedDbStore} from "@attention-firewall/secure-browser-store";
 import {normalizeDomain} from "@attention-firewall/intent-engine";
+import type {InterventionProfile} from "@attention-firewall/attention-engine";
 
 type Purpose="work"|"study"|"communication"|"entertainment"|"rest"|"other";
 type Mode="adaptive"|"strict";
+type LocalIntent={
+ id:string;
+ label:string;
+ purpose:Purpose;
+ targetDomains:string[];
+ startedAt:number;
+ budgetMinutes?:number;
+};
 type Profile={
- intent?:{id:string;label:string;purpose:Purpose;targetDomains:string[];startedAt:number;budgetMinutes?:number};
+ version:1;
+ intent?:LocalIntent;
  rules:[];
- interventionProfile:{successByIntervention:Record<string,number>;attemptsByIntervention:Record<string,number>};
+ interventionProfile:InterventionProfile;
  privacy:{telemetryOptIn:boolean;researchOptIn:boolean};
 };
 
-const initialFeatures={interactions:1,scrolls:6};
+const blankProfile:Profile={
+ version:1,
+ rules:[],
+ interventionProfile:{successByIntervention:{},attemptsByIntervention:{}},
+ privacy:{telemetryOptIn:false,researchOptIn:false}
+};
 
 export default function Home(){
- const profileStore=useMemo(()=>new EncryptedIndexedDbStore<Profile>("profile-v1","attention-firewall-web-profile"),[]);
- const historyStore=useMemo(()=>new EncryptedIndexedDbStore<DailyHistory>("history-v1","attention-firewall-web-history"),[]);
+ const profileStore=useMemo(()=>new EncryptedIndexedDbStore<Profile>("profile-v2","attention-firewall-web-profile"),[]);
+ const historyStore=useMemo(()=>new EncryptedIndexedDbStore<DailyHistory>("history-v2","attention-firewall-web-history"),[]);
 
  const [loaded,setLoaded]=useState(false);
+ const [profile,setProfile]=useState<Profile>(blankProfile);
  const [intent,setIntent]=useState("Finish focused work");
  const [purpose,setPurpose]=useState<Purpose>("work");
  const [domains,setDomains]=useState("docs.example.com");
@@ -39,31 +55,44 @@ export default function Home(){
  useEffect(()=>{
   if(loaded)return;
   void (async()=>{
-   const stored=await profileStore.get();
-   const savedHistory=await historyStore.get();
-   if(stored?.intent){
+   const stored=(await profileStore.get())??blankProfile;
+   const savedHistory=(await historyStore.get())??{version:1,days:[]};
+   setProfile(stored);
+   if(stored.intent){
     setIntent(stored.intent.label);
     setPurpose(stored.intent.purpose);
     setDomains(stored.intent.targetDomains.join(", "));
     setBudget(stored.intent.budgetMinutes?String(stored.intent.budgetMinutes):"");
    }
    setMode("adaptive");
-   const nextHistory=savedHistory??{version:1,days:[]};
-   setHistory(nextHistory);
-   setSummary(nextHistory.days[0]??emptyDay());
+   setHistory(savedHistory);
+   setSummary(savedHistory.days[0]??emptyDay());
    setLoaded(true);
   })();
  },[loaded,historyStore,profileStore]);
 
- const twin=buildAttentionTwin(history,{successByIntervention:{},attemptsByIntervention:{}});
+ const twin=useMemo(
+  ()=>buildAttentionTwin(history.days,profile.interventionProfile),
+  [history,profile.interventionProfile]
+ );
 
- const persist=async(rt:AttentionRuntime)=>{
+ const saveState=async(nextProfile:Profile,nextHistory:DailyHistory)=>{
+  setProfile(nextProfile);
+  setHistory(nextHistory);
+  setSummary(nextHistory.days[0]??emptyDay());
+  await profileStore.set(nextProfile);
+  await historyStore.set(nextHistory);
+ };
+
+ const persistRuntime=async(rt:AttentionRuntime,nextProfile?:Profile)=>{
   const current=rt.getSummary();
   const existing=await historyStore.get()??{version:1,days:[]};
-  const next=pruneHistory(upsertDay(existing,current),30);
-  setSummary(current);
-  setHistory(next);
-  await historyStore.set(next);
+  const nextHistory=pruneHistory(upsertDay(existing,current),30);
+  const nextProfile:Profile=nextProfile??{
+   ...profile,
+   interventionProfile:rt.getInterventionProfile()
+  };
+  await saveState(nextProfile,nextHistory);
   setStatus("Local state saved.");
  };
 
@@ -75,26 +104,27 @@ export default function Home(){
   }
   const startedAt=Date.now();
   const parsedBudget=Number(budget);
-  const profile={successByIntervention:{},attemptsByIntervention:{}};
+  const currentIntent:LocalIntent={
+   id:startedAt.toString(36),
+   label:intent.trim().slice(0,120),
+   purpose,
+   targetDomains,
+   startedAt,
+   budgetMinutes:Number.isFinite(parsedBudget)&&parsedBudget>=1&&parsedBudget<=240?Math.floor(parsedBudget):undefined
+  };
   const rt=new AttentionRuntime({
    protectionMode:mode,
-   profile,
+   profile:profile.interventionProfile,
    rules:[],
    attentionTwin:twin,
-   intent:{
-    id:startedAt.toString(36),
-    label:intent.trim().slice(0,120),
-    purpose,
-    targetDomains,
-    startedAt,
-    budgetMinutes:Number.isFinite(parsedBudget)&&parsedBudget>=1?Math.floor(parsedBudget):undefined
-   }
+   intent:currentIntent
   },undefined,summary);
   rt.begin(targetDomains[0]!);
   setRuntime(rt);
   setAssessment(null);
   setDecision("none");
   setRecovery(0);
+  setProfile({...profile,intent:currentIntent});
   setStatus("Local session started.");
  };
 
@@ -103,15 +133,27 @@ export default function Home(){
   const target=normalizeDomain(domains.split(",")[0]??"");
   const result=runtime.sample({
    elapsedSeconds:60,
-   interactions:passive?0:initialFeatures.interactions,
-   scrolls:passive?40:initialFeatures.scrolls,
+   interactions:passive?0:1,
+   scrolls:passive?40:6,
    domain:target,
    lateNightRisk:0
   });
   setAssessment(result.assessment);
   setDecision(result.intervention);
   setRecovery(result.recoveryMinutes);
-  void persist(runtime);
+  const nextProfile={
+   ...profile,
+   intent:runtime["config"]?.intent,
+   interventionProfile:runtime.getInterventionProfile()
+  } as Profile;
+  void persistRuntime(runtime,nextProfile);
+ };
+
+ const respond=(outcome:"exited"|"continued")=>{
+  if(!runtime||decision==="none"){setStatus("There is no active intervention.");return;}
+  runtime.respond(decision,outcome);
+  setProfile({...profile,interventionProfile:runtime.getInterventionProfile()});
+  setStatus(outcome==="exited"?"Intervention accepted locally.":"Continuation recorded locally.");
  };
 
  const recoveredMinutes=Math.round((summary.attentionRecoveredSeconds??0)/60);
@@ -153,6 +195,7 @@ export default function Home(){
     <p>{assessment?.reasons.length?assessment.reasons.join(" · "):"No intervention is active."}</p>
     <button onClick={()=>sample(false)}>Simulate intentional minute</button>
     <button onClick={()=>sample(true)} style={{marginLeft:8}}>Simulate passive scroll</button>
+    {decision!=="none"&&<div style={{marginTop:16}}><button onClick={()=>respond("exited")}>Exit & record recovery</button><button onClick={()=>respond("continued")} style={{marginLeft:8}}>Continue intentionally</button></div>}
    </article>
 
    <article className="card">
@@ -166,7 +209,7 @@ export default function Home(){
     <div className="label">RECOVERY</div>
     <h2>{recovery ? "Use the next " + recovery + " minutes deliberately." : "Recovery appears after an intervention."}</h2>
     <p>Leaving the loop is only half the job. Attention Firewall helps convert recovered time into a concrete next action.</p>
-    <button onClick={()=>setStatus("Recovery mode is available from the browser intervention flow.")}>Show recovery guidance</button>
+    <a href="/privacy">Open Privacy Center</a>
    </article>
   </section>
 
