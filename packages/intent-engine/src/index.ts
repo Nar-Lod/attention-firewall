@@ -55,8 +55,16 @@ export function sanitizeIntent(value:unknown):IntentEnvelope|undefined{
  const targetDomains=v.targetDomains.map(x=>typeof x==="string"?normalizeDomain(x):"").filter(Boolean);
  if(targetDomains.length!==v.targetDomains.length)return undefined;
  const startedAt=typeof v.startedAt==="number"&&Number.isFinite(v.startedAt)?v.startedAt:Date.now();
- const budgetMinutes=v.budgetMinutes===undefined?undefined:(Number.isInteger(v.budgetMinutes)&&v.budgetMinutes>=1&&v.budgetMinutes<=240?v.budgetMinutes:undefined);
- return {id:v.id,label:v.label,purpose:v.purpose as IntentPurpose,targetDomains,startedAt,budgetMinutes};
+ const budgetCandidate=v.budgetMinutes;
+ const budgetMinutes=typeof budgetCandidate==="number"&&Number.isInteger(budgetCandidate)&&budgetCandidate>=1&&budgetCandidate<=240?budgetCandidate:undefined;
+ return {
+  id:v.id,
+  label:v.label,
+  purpose:v.purpose as IntentPurpose,
+  targetDomains,
+  startedAt,
+  ...(budgetMinutes!==undefined?{budgetMinutes}:{})
+ };
 }
 
 export function intentToSessionTarget(intent:IntentEnvelope|undefined):string{
