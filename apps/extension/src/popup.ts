@@ -38,8 +38,8 @@ document.getElementById("save")?.addEventListener("click",async()=>{
 
  if(!label){statusEl.textContent="Add an intent first.";return;}
 
- await chrome.storage.local.set({
-  currentIntent:{label,targetDomains,startedAt:Date.now(),purpose,budgetMinutes},
+ await setLocalState({
+  currentIntent:{id:crypto.randomUUID(),label,targetDomains,startedAt:Date.now(),purpose,budgetMinutes},
   protectionMode:modeEl.value==="strict"?"strict":"adaptive"
  });
  statusEl.textContent="Saved on this device. Telemetry remains off by default.";
@@ -113,7 +113,7 @@ document.getElementById("saveRule")?.addEventListener("click",async()=>{
   statusEl.textContent="Enter a valid site and intervention level.";
   return;
  }
- const stored=await chrome.storage.local.get("rules");
+ const stored=await getLocalState();
  const rules=Array.isArray(stored.rules)?stored.rules:[];
  const next=[...rules.filter((rule:unknown)=>typeof rule==="object"&&rule!==null&&(rule as Record<string,unknown>).value!==value),
   {id:"rule_"+crypto.randomUUID(),target:"site",value,enabled:true,minimumIntervention:ruleLevelEl.value}
@@ -136,7 +136,7 @@ document.getElementById("saveCommitment")?.addEventListener("click",async()=>{
   statusEl.textContent="Enter a valid site, duration and commitment level.";
   return;
  }
- const stored=await chrome.storage.local.get("commitments");
+ const stored=await getLocalState();
  const commitments=Array.isArray(stored.commitments)?stored.commitments:[];
  const now=Date.now();
  const commitment={
