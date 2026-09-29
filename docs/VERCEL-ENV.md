@@ -22,3 +22,6 @@ Never commit their values.
 Never connect a preview deployment to production database credentials. Use a separate preview database or keep account/cloud features disabled.
 
 The local-first dashboard remains usable without server variables.
+
+
+Release gate: current web preview includes the local-first dashboard, secure CSP proxy, privacy center, security center, insights, and fail-closed account routes.
