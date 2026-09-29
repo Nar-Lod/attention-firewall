@@ -5,6 +5,7 @@ import {validateRuntimeSample} from "@attention-firewall/runtime-protocol";
 import {buildAttentionTwin} from "@attention-firewall/personalization-engine";
 import {validateRules,type PolicyRule} from "@attention-firewall/policy-engine";
 import {appendSecurityEvent,clearLocalState,getLocalState,setLocalState} from "./local-state.js";
+import {hostPatterns} from "./host-permissions.js";
 import {DEFAULT_HISTORY,addDailySeconds,emptyDay,recordInterventionOutcome,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
 interface ActivitySample{type:"ACTIVITY_SAMPLE";protocolVersion:1;scrollCount:number;interactionCount:number;elapsedSeconds:number;domain:string;scrollBursts?:number;scrollDirectionChanges?:number;scrollDistancePerMinute?:number}
