@@ -40,7 +40,7 @@ describe("AttentionRuntime policy composition",()=>{
   it("learns that an exit is successful",()=>{
     const rt=new AttentionRuntime(makeConfig());
     rt.begin("example.com");
-    const first=rt.sample({elapsedSeconds:600,interactions:0,scrolls:500,scrollBursts:12,domain:"example.com"});
+    const first=rt.sample({elapsedSeconds:600,interactions:0,scrolls:500,scrollBursts:12,scrollDirectionChanges:8,domain:"example.com"});
     expect(first.intervention).not.toBe("none");
     rt.respond(first.intervention,"exited");
     const profile=rt.getInterventionProfile();
