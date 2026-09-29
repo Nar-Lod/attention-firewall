@@ -9,7 +9,9 @@ import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Button
 import android.widget.LinearLayout
+import android.view.ViewGroup
 import android.widget.TextView
+import android.os.CountDownTimer
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -21,6 +23,7 @@ class AttentionAccessibilityService : AccessibilityService() {
     private var contextSwitches = 0
     private var lastProtectedPackage: String? = null
     private var lastUsageSampleAt: Long = 0L
+    private var recoveryTimer: CountDownTimer? = null
     private val usageSignals by lazy { UsageSignalAdapter(this) }
 
     private val protectedApps by lazy { ProtectedAppStore(this) }
@@ -155,6 +158,10 @@ class AttentionAccessibilityService : AccessibilityService() {
 
         if (intervention != LocalIntervention.LOCK) {
             root.addView(Button(this).apply {
+                text = "Start 2-minute recovery"
+                setOnClickListener { startRecovery(root) }
+            })
+            root.addView(Button(this).apply {
                 text = "Continue intentionally"
                 setOnClickListener {
                     recordRuntimeEvent(LocalRuntimeEvent.InterventionResponse("android", intervention.name.lowercase(), LocalRuntimeEvent.Outcome.CONTINUED))
@@ -176,6 +183,24 @@ class AttentionAccessibilityService : AccessibilityService() {
         val manager = getSystemService(WINDOW_SERVICE) as WindowManager
         manager.addView(root, params)
         overlay = root
+    }
+
+    private fun startRecovery(root: View) {
+        recoveryTimer?.cancel()
+        val button = (root as? ViewGroup)?.let { group -> (0 until group.childCount).map { group.getChildAt(it) }.filterIsInstance<Button>().firstOrNull() }
+        button?.isEnabled = false
+        button?.text = "Recovering… 2:00"
+        recoveryTimer = object : CountDownTimer(120_000L, 1_000L) {
+            override fun onTick(millisUntilFinished: Long) {
+                val seconds = millisUntilFinished / 1000L
+                button?.text = "Recovering… %d:%02d".format(seconds / 60, seconds % 60)
+            }
+
+            override fun onFinish() {
+                recordRuntimeEvent(LocalRuntimeEvent.RecoveryCompleted("android", 120))
+                removeIntervention()
+            }
+        }.start()
     }
 
     private fun recordRuntimeEvent(event: LocalRuntimeEvent) {
@@ -223,6 +248,7 @@ class AttentionAccessibilityService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        recoveryTimer?.cancel()
         removeIntervention()
         super.onDestroy()
     }
