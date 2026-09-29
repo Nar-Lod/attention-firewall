@@ -60,6 +60,7 @@ export async function handleVault(
   if(message==="authentication required"||message==="invalid auth context")return Response.json({error:"unauthorized"},{status:401});
   if(message==="https required")return Response.json({error:"https_required"},{status:400});
   if(message==="request too large")return Response.json({error:"payload_too_large"},{status:413});
+  if(message==="version conflict")return Response.json({error:"version_conflict"},{status:409});
   if(message==="vault persistence not configured")return Response.json({error:"service_not_configured"},{status:503});
   return Response.json({error:"invalid_request"},{status:400});
  }
