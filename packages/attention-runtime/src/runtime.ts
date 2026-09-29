@@ -1,5 +1,5 @@
 import {assessAttention,chooseIntervention,detectPassiveScrollLoop} from "@attention-firewall/attention-engine";
-import {addDailySeconds,emptyDay,recordDriftEpisode,recordIntervention,todayKey,type DailySummary} from "@attention-firewall/local-analytics";
+import {addDailySeconds,emptyDay,recordDriftEpisode,recordInterventionOutcome,recordInterventionShown,todayKey,type DailySummary} from "@attention-firewall/local-analytics";
 import {recommendRecovery} from "@attention-firewall/recovery-engine";
 import type {RuntimeConfig,RuntimeDecision,RuntimeSession} from "./types.js";
 import {applyPolicy} from "@attention-firewall/policy-engine";
@@ -90,7 +90,7 @@ export class AttentionRuntime{
   day=sample.interactions===0&&sample.scrolls>0
    ?addDailySeconds(day,"passiveSeconds",elapsed)
    :addDailySeconds(day,"intentionalSeconds",sample.outsideIntent?0:elapsed);
-  if(intervention!=="none")day=recordDriftEpisode(day);
+  if(intervention!=="none"){day=recordDriftEpisode(day);day=recordInterventionShown(day);}
   this.summary=day;
 
   const recovery=recommendRecovery({
@@ -106,7 +106,7 @@ export class AttentionRuntime{
  respond(intervention:string,outcome:"continued"|"exited"){
   this.config.profile.attemptsByIntervention[intervention]=(this.config.profile.attemptsByIntervention[intervention]??0)+1;
   if(outcome==="exited")this.config.profile.successByIntervention[intervention]=(this.config.profile.successByIntervention[intervention]??0)+1;
-  this.summary=recordIntervention(this.summary,outcome==="exited");
+  this.summary=recordInterventionOutcome(this.summary,outcome==="exited");
   if(outcome==="continued"&&this.session)this.session.previousInterventionIgnored=true;
  }
 
