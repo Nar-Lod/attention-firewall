@@ -7,6 +7,7 @@ function config(){
   protectionMode:"adaptive" as const,
   profile:{successByIntervention:{},attemptsByIntervention:{}},
   rules:[],
+  commitments:[],
   attentionTwin:{version:1,sampleDays:0,preferredIntervention:"awareness",interventionSuccess:{},highRiskHours:[],attentionRecoveredSeconds:0,consistency:1},
   intent:{id:"1",label:"study",purpose:"study" as const,targetDomains:["example.com"],startedAt:0}
  };
