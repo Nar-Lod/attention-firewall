@@ -13,18 +13,48 @@ import android.widget.TextView
 
 class AttentionAccessibilityService : AccessibilityService() {
     private var overlay: View? = null
+    private var currentPackage: String? = null
+    private var protectedSessionStartedAt: Long = 0L
+    private var recentReopens = 0
+    private var contextSwitches = 0
+    private var lastProtectedPackage: String? = null
+
     private val protectedApps by lazy { ProtectedAppStore(this) }
+    private val secureStore by lazy { SecureLocalStore(this) }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        val packageName = event?.packageName?.toString() ?: return
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+
+        val packageName = event.packageName?.toString() ?: return
         if (packageName == this.packageName) return
 
-        if (protectedApps.getPackages().contains(packageName)) {
-            val hardLock = SecureLocalStore(this).get("hard_lock") == "1"
-            showIntervention(hardLock)
+        val now = System.currentTimeMillis()
+        val protected = protectedApps.getPackages().contains(packageName)
+
+        if (protected) {
+            if (currentPackage == packageName) {
+                maybeIntervene(packageName, now)
+                return
+            }
+
+            if (lastProtectedPackage == packageName && now - protectedSessionStartedAt <= 15 * 60_000L) {
+                recentReopens = (recentReopens + 1).coerceAtMost(20)
+            }
+
+            if (currentPackage != null && currentPackage != packageName) {
+                contextSwitches = (contextSwitches + 1).coerceAtMost(100)
+            }
+
+            currentPackage = packageName
+            lastProtectedPackage = packageName
+            protectedSessionStartedAt = now
+            maybeIntervene(packageName, now)
         } else {
-            removeIntervention()
+            if (currentPackage != packageName && currentPackage != null) {
+                contextSwitches = (contextSwitches + 1).coerceAtMost(100)
+            }
+            currentPackage = packageName
+            if (overlay != null) removeIntervention()
         }
     }
 
@@ -32,7 +62,32 @@ class AttentionAccessibilityService : AccessibilityService() {
         removeIntervention()
     }
 
-    private fun showIntervention(hardLock: Boolean) {
+    private fun maybeIntervene(packageName: String, now: Long) {
+        val sessionSeconds = ((now - protectedSessionStartedAt).coerceAtLeast(0L)) / 1000.0
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val lateNightRisk = if (hour >= 22 || hour < 6) 1.0 else 0.0
+        val hardLock = secureStore.get("hard_lock") == "1"
+
+        val assessment = LocalAttentionEngine.assess(
+            AttentionFeatures(
+                sessionSeconds = sessionSeconds,
+                passiveSeconds = 0.0,
+                interactionRate = 0.2,
+                recentReopens = recentReopens,
+                contextSwitches = contextSwitches,
+                declaredIntentMatch = 1.0,
+                outsideIntent = false,
+                lateNightRisk = lateNightRisk
+            )
+        )
+
+        val intervention = LocalAttentionEngine.intervention(assessment, hardLock)
+        if (intervention != Intervention.NONE) {
+            showIntervention(intervention)
+        }
+    }
+
+    private fun showIntervention(intervention: Intervention) {
         if (overlay != null) return
 
         val root = LinearLayout(this).apply {
@@ -48,7 +103,12 @@ class AttentionAccessibilityService : AccessibilityService() {
         }
 
         val body = TextView(this).apply {
-            text = "This app is protected on your device. Take a deliberate pause before continuing."
+            text = when (intervention) {
+                Intervention.LOCK -> "This app is locked by your local protection rule."
+                Intervention.DELAY -> "Take a deliberate pause before continuing."
+                Intervention.COMMITMENT -> "You set a stronger protection rule for this moment."
+                else -> "Your current session may be drifting from your intention."
+            }
             textSize = 15f
             setTextColor(Color.LTGRAY)
             setPadding(0, 18, 0, 18)
@@ -59,22 +119,22 @@ class AttentionAccessibilityService : AccessibilityService() {
             setOnClickListener { performGlobalAction(GLOBAL_ACTION_HOME) }
         }
 
-        val continueButton = Button(this).apply {
-            text = "Continue intentionally"
-            setOnClickListener { removeIntervention() }
-        }
-
         root.addView(title)
         root.addView(body)
         root.addView(leave)
-        if (!hardLock) root.addView(continueButton)
+
+        if (intervention != Intervention.LOCK) {
+            root.addView(Button(this).apply {
+                text = "Continue intentionally"
+                setOnClickListener { removeIntervention() }
+            })
+        }
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.CENTER
