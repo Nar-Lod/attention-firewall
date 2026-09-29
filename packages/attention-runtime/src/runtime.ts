@@ -1,4 +1,4 @@
-import {assessAttention,chooseIntervention} from "@attention-firewall/attention-engine";
+import {assessAttention,chooseIntervention,detectPassiveScrollLoop} from "@attention-firewall/attention-engine";
 import {addDailySeconds,emptyDay,recordDriftEpisode,recordIntervention,todayKey,type DailySummary} from "@attention-firewall/local-analytics";
 import {recommendRecovery} from "@attention-firewall/recovery-engine";
 import type {RuntimeConfig,RuntimeDecision,RuntimeSession} from "./types.js";
@@ -53,7 +53,14 @@ export class AttentionRuntime{
   const interactionRate=Math.min(1,session.interactionCount/total);
   const scrollEventsPerMinute=Math.min(120,session.scrollCount/Math.max(1,session.elapsedSeconds/60));
 
-  const assessment=assessAttention({
+  const passiveLoop=detectPassiveScrollLoop({
+   sessionSeconds:session.elapsedSeconds,repeatedOpens:session.recentReopens,recentReopens:session.recentReopens,
+   passiveSeconds:session.passiveSeconds,interactionRate,scrollEventsPerMinute,
+   contextSwitches:session.contextSwitches,declaredIntentMatch:session.intentMatch,
+   outsideIntent:session.outsideIntent,lateNightRisk:session.lateNightRisk,
+   notificationLaunch:session.notificationLaunch,previousInterventionIgnored:session.previousInterventionIgnored
+  });
+  let assessment=assessAttention({
    sessionSeconds:session.elapsedSeconds,repeatedOpens:session.recentReopens,recentReopens:session.recentReopens,
    passiveSeconds:session.passiveSeconds,interactionRate,scrollEventsPerMinute,
    contextSwitches:session.contextSwitches,declaredIntentMatch:session.intentMatch,
