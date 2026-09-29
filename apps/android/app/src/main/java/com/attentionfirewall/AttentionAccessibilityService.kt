@@ -20,6 +20,8 @@ class AttentionAccessibilityService : AccessibilityService() {
     private var recentReopens = 0
     private var contextSwitches = 0
     private var lastProtectedPackage: String? = null
+    private var lastUsageSampleAt: Long = 0L
+    private val usageSignals by lazy { UsageSignalAdapter(this) }
 
     private val protectedApps by lazy { ProtectedAppStore(this) }
     private val secureStore by lazy { SecureLocalStore(this) }
@@ -52,6 +54,7 @@ class AttentionAccessibilityService : AccessibilityService() {
             lastProtectedPackage = packageName
             protectedSessionStartedAt = now
             recordRuntimeEvent(LocalRuntimeEvent.SessionStart("android", packageName))
+            recordLocalUsageSample(packageName, now)
             maybeIntervene(packageName, now)
         } else {
             if (currentPackage != packageName && currentPackage != null) {
@@ -64,6 +67,23 @@ class AttentionAccessibilityService : AccessibilityService() {
 
     override fun onInterrupt() {
         removeIntervention()
+    }
+
+    private fun recordLocalUsageSample(packageName: String, now: Long) {
+        if (!usageSignals.hasUsageAccess() || now - lastUsageSampleAt < 60_000L) return
+        lastUsageSampleAt = now
+        runCatching {
+            val summary = usageSignals.sampleLastMinutes(1)
+            recordRuntimeEvent(
+                LocalRuntimeEvent.Sample(
+                    platform = "android",
+                    domain = packageName,
+                    elapsedSeconds = summary.activeSeconds.coerceIn(0L, 60L).toInt(),
+                    interactions = summary.foregroundTransitions.coerceIn(0, 60),
+                    scrolls = 0
+                )
+            )
+        }
     }
 
     private fun maybeIntervene(packageName: String, now: Long) {
