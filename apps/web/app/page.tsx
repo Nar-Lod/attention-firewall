@@ -57,9 +57,6 @@ export default function Home(){
  const [commitMinutes,setCommitMinutes]=useState("30");
  const [commitLevel,setCommitLevel]=useState<Commitment["minimumIntervention"]>("commitment");
  const [runtime,setRuntime]=useState<AttentionRuntime|null>(null);
- const [assessment,setAssessment]=useState<{score:number;state:string;reasons:string[]}|null>(null);
- const [decision,setDecision]=useState("none");
- const [recovery,setRecovery]=useState(0);
  const [summary,setSummary]=useState(emptyDay());
  const [history,setHistory]=useState<DailyHistory>({version:1,days:[]});
  const [status,setStatus]=useState("");
@@ -138,34 +135,7 @@ export default function Home(){
   const nextProfile={...profile,intent:currentIntent};
   setProfile(nextProfile);
   void profileStore.set(nextProfile);
-  setAssessment(null);
-  setDecision("none");
-  setRecovery(0);
   setStatus("Local session started.");
- };
-
- const sample=(passive:boolean)=>{
-  if(!runtime){setStatus("Start a session first.");return;}
-  const target=normalizeDomain(domains.split(",")[0]??"");
-  const result=runtime.sample({
-   elapsedSeconds:passive?600:60,
-   interactions:passive?0:1,
-   scrolls:passive?300:6,
-   scrollBursts:passive?12:1,
-   scrollDirectionChanges:passive?8:0,
-   domain:target,
-   lateNightRisk:0
-  });
-
-  setAssessment(result.assessment);
-  setDecision(result.intervention);
-  setRecovery(result.recoveryMinutes);
-
-  const nextProfile:Profile={
-   ...profile,
-   interventionProfile:runtime.getInterventionProfile()
-  };
-  void persistState(nextProfile,pruneHistory(upsertDay(history,result.dailySummary),30));
  };
 
  const startCommitment=async()=>{
@@ -194,26 +164,12 @@ export default function Home(){
   setStatus("Commitment started locally.");
  };
 
- const respond=(outcome:"exited"|"continued")=>{
-  if(!runtime||decision==="none"){setStatus("There is no active intervention.");return;}
-  runtime.respond(decision,outcome);
-  const nextProfile:Profile={...profile,interventionProfile:runtime.getInterventionProfile()};
-  const nextHistory=pruneHistory(upsertDay(history,runtime.getSummary()),30);
-  setProfile(nextProfile);
-  setHistory(nextHistory);
-  setSummary(nextHistory.days[0]??emptyDay());
-  void profileStore.set(nextProfile);
-  void historyStore.set(nextHistory);
-  setStatus(outcome==="exited"?"Intervention accepted locally.":"Continuation recorded locally.");
- };
-
  const recoveredMinutes=Math.round((summary.attentionRecoveredSeconds??0)/60);
  const sessionSeconds=runtime&&profile.intent?Math.max(0,Math.floor((sessionNow-profile.intent.startedAt)/1000)):0;
  const sessionMinutes=Math.floor(sessionSeconds/60);
  const sessionRemainder=String(sessionSeconds%60).padStart(2,"0");
  const sessionBudget=profile.intent?.budgetMinutes??0;
  const sessionProgress=sessionBudget?Math.min(100,Math.round((sessionSeconds/(sessionBudget*60))*100)):0;
- const driftRisk=assessment?Math.round(assessment.score*100):0;
 
  return <main className="shell">
   <header>
@@ -225,9 +181,9 @@ export default function Home(){
    <div>
     <p className="eyebrow">YOUR ATTENTION</p>
     <h1>Protect your intention.<br/><em>Not just your time.</em></h1>
-    <p className="sub">Detailed attention state is processed locally. The cloud is not required for the protection loop.</p><p className="preview-note">The dashboard is a control plane. Browser enforcement runs locally through the extension; these controls preview the decision loop without uploading behavior.</p><div className="hero-badges"><span>LOCAL ENGINE</span><span>ENCRYPTED LOCAL STATE</span><span>NO BEHAVIORAL CLOUD LOG</span></div>
+    <p className="sub">Detailed attention state is processed locally. The cloud is not required for the protection loop.</p><p className="preview-note">The dashboard is a control plane. Protection decisions are made locally by the device and browser components.</p><div className="hero-badges"><span>LOCAL ENGINE</span><span>ENCRYPTED LOCAL STATE</span><span>NO BEHAVIORAL CLOUD LOG</span></div>
    </div>
-   <div className="score"><span>DRIFT SCORE</span><b>{driftRisk}</b><small>{assessment?.state??"waiting"}</small></div>
+   <div className="score"><span>PROTECTION STATE</span><b>ON</b><small>local control plane</small></div>
   </section>
 
   <section className="today-strip">
@@ -257,11 +213,8 @@ export default function Home(){
     <div className="label">LOCAL SESSION</div>
     <div className="session-header"><div><span className="session-time">{sessionMinutes}:{sessionRemainder}</span><small>{sessionBudget?`${sessionProgress}% of ${sessionBudget} min budget`:"open session"}</small></div>{runtime&&<button className="secondary-button session-end" onClick={()=>{setRuntime(null);setAssessment(null);setDecision("none");setStatus("Local session ended. Your saved history remains on this device.");}}>End session</button>}</div>
     {runtime&&sessionBudget>0&&<div className="session-progress"><div style={{width:`${sessionProgress}%`}}/></div>}
-    <h2>{decision}</h2>
-    <p>{assessment?.reasons.length?assessment.reasons.join(" · "):"No intervention is active."}</p>
-    <button onClick={()=>sample(false)}>Preview intentional minute</button>
-    <button onClick={()=>sample(true)} style={{marginLeft:8}}>Preview passive drift</button>
-    {decision!=="none"&&<div style={{marginTop:16}}><button onClick={()=>respond("exited")}>Exit & recover</button><button onClick={()=>respond("continued")} className="secondary-button">Continue intentionally</button></div>}
+    <h2>{runtime?"Session active":"Ready for a local session"}</h2>
+    <p>{runtime?"Waiting for real device/browser signals. No behavioral state is fabricated by this dashboard.":"Start a local session to define the attention boundary. Enforcement signals come from the connected device or browser component."}
    </article>
 
    <article className="card">
@@ -284,7 +237,7 @@ export default function Home(){
 
    <article className="card recovery">
     <div className="label">RECOVERY</div>
-    <h2>{recovery ? "Use the next " + recovery + " minutes deliberately." : "Recovery appears after an intervention."}</h2>
+    <h2>{recoveredMinutes ? "Use recovered attention deliberately." : "Recovery appears after a local intervention."}</h2>
     <p>Leaving the loop is only half the job. Attention Firewall helps convert recovered time into a concrete next action.</p>
     <div className="recovery-actions"><a href="/insights">Open local insights</a><a href="/privacy">Review privacy controls</a></div>
    </article>
