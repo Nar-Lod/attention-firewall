@@ -23,7 +23,8 @@ export function evaluateModel(observations:LabeledObservation[],model?:Attention
   const rawState=assessAttention(observation.features,model).state;
   const predicted=rawState==="focused"||rawState==="intentional"?"intentional":rawState==="compulsive-risk"?"compulsive-risk":"drifting";
   const actual=observation.label;
-  confusion[actual][predicted]= (confusion[actual][predicted]??0)+1;
+  const row=confusion[actual]!;
+  row[predicted]=(row[predicted]??0)+1;
   if(predicted===actual)correct++;
  }
  return {
