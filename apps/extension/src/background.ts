@@ -4,6 +4,7 @@ import {sanitizeIntent,type IntentEnvelope} from "@attention-firewall/intent-eng
 import {validateRuntimeSample} from "@attention-firewall/runtime-protocol";
 import {buildAttentionTwin} from "@attention-firewall/personalization-engine";
 import {validateRules,type PolicyRule} from "@attention-firewall/policy-engine";
+import {clearLocalState,getLocalState,setLocalState} from "./local-state.js";
 import {DEFAULT_HISTORY,addDailySeconds,emptyDay,recordInterventionOutcome,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
 interface ActivitySample{type:"ACTIVITY_SAMPLE";protocolVersion:1;scrollCount:number;interactionCount:number;elapsedSeconds:number;domain:string;scrollBursts?:number;scrollDirectionChanges?:number;scrollDistancePerMinute?:number}
@@ -78,7 +79,7 @@ async function disableWebProtection(){
 
 async function clearLocalData(){
  await unregisterDetector();
- await chrome.storage.local.clear();
+ await clearLocalState();
  runtimes.clear();
  pendingRecovery.clear();
 }
@@ -112,10 +113,10 @@ async function unregisterDetector(){
 
 async function handleActivity(tabId:number,message:ActivitySample){
  const state=runtimes.get(tabId);
- const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","dailyHistory","rules","commitments"]);
+ const stored=await getLocalState();
  const intent=sanitizeIntent(stored.currentIntent);
  const profile=parseInterventionProfile(stored.interventionProfile);
- const savedHistory=stored.dailyHistory as DailyHistory|undefined;
+ const savedHistory=stored.dailyHistory;
  const commitments=parseCommitments(stored.commitments);
  const attentionTwin=buildAttentionTwin(savedHistory?.version===1?savedHistory.days:[],profile);
  const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
@@ -163,7 +164,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
   lateNightRisk:hour>=22||hour<6?1:0
  });
 
- const existingHistory=stored.dailyHistory as DailyHistory|undefined;
+ const existingHistory=stored.dailyHistory;
  const nextHistory=pruneHistory(upsertDay(existingHistory?.version===1?existingHistory:DEFAULT_HISTORY,result.dailySummary),30);
  await chrome.storage.local.set({dailySummary:result.dailySummary,dailyHistory:nextHistory});
 
@@ -174,7 +175,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
 }
 
 async function handleResponse(intervention:string,outcome:"continued"|"exited"){
- const stored=await chrome.storage.local.get(["interventionProfile","dailySummary","dailyHistory"]);
+ const stored=await getLocalState();
  const profile=parseInterventionProfile(stored.interventionProfile);
  profile.attemptsByIntervention[intervention]=(profile.attemptsByIntervention[intervention]??0)+1;
  if(outcome==="exited")profile.successByIntervention[intervention]=(profile.successByIntervention[intervention]??0)+1;
@@ -183,17 +184,17 @@ async function handleResponse(intervention:string,outcome:"continued"|"exited"){
  let summary=stored.dailySummary as ReturnType<typeof emptyDay>|undefined;
  summary=summary&&summary.date===new Date().toISOString().slice(0,10)?summary:emptyDay();
  summary=recordInterventionOutcome(summary,outcome==="exited");
- const existingHistory=stored.dailyHistory as DailyHistory|undefined;
+ const existingHistory=stored.dailyHistory;
  const nextHistory=pruneHistory(upsertDay(existingHistory?.version===1?existingHistory:DEFAULT_HISTORY,summary),30);
- await chrome.storage.local.set({interventionProfile:profile,dailySummary:summary,dailyHistory:nextHistory});
+ await setLocalState({interventionProfile:profile,dailySummary:summary,dailyHistory:nextHistory});
 }
 
 async function handleSessionStart(tabId:number,message:SessionStart){
- const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","commitments","rules","dailyHistory"]);
+ const stored=await getLocalState();
  const intent=sanitizeIntent(stored.currentIntent);
  const profile=parseInterventionProfile(stored.interventionProfile);
  const commitments=parseCommitments(stored.commitments);
- const savedHistory=stored.dailyHistory as DailyHistory|undefined;
+ const savedHistory=stored.dailyHistory;
  const attentionTwin=buildAttentionTwin(savedHistory?.version===1?savedHistory.days:[],profile);
  const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
  let state=runtimes.get(tabId);
@@ -230,7 +231,7 @@ async function handleRecovery(tabId:number,durationSeconds:number){
  const existingHistory=stored.dailyHistory as DailyHistory|undefined;
  const nextHistory=pruneHistory(upsertDay(existingHistory?.version===1?existingHistory:DEFAULT_HISTORY,summary),30);
  pendingRecovery.delete(tabId);
- await chrome.storage.local.set({dailySummary:summary,dailyHistory:nextHistory});
+ await setLocalState({dailySummary:summary,dailyHistory:nextHistory});
 }
 
 function isRecoveryCompleted(value:unknown):value is {type:"RECOVERY_COMPLETED";durationSeconds:number}{
