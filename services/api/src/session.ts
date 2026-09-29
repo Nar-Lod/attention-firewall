@@ -1,4 +1,4 @@
-import {randomBytes,createHash} from "node:crypto";
+import {randomBytes,randomUUID,createHash} from "node:crypto";
 import type {AuthenticatedContext} from "./types.js";
 
 export interface SessionRecord{
@@ -34,7 +34,7 @@ export function issueSession(
  if(!safeId(accountId)||!safeId(deviceId))throw new Error("invalid identity");
  const token=randomBytes(32).toString("base64url");
  const record:SessionRecord={
-  id:randomBytes(16).toString("hex"),
+  id:randomUUID(),
   tokenHash:hashSessionToken(token),
   accountId,
   deviceId,
