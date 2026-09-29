@@ -10,7 +10,24 @@ export interface BehaviorFeatures {
   interactionRate:number; scrollEventsPerMinute?:number; scrollBursts?:number; scrollDirectionChanges?:number; scrollDistancePerMinute?:number; contextSwitches:number; declaredIntentMatch:number; outsideIntent:boolean;
   lateNightRisk:number; notificationLaunch:boolean; previousInterventionIgnored:boolean;
 }
-export interface AttentionAssessment { score:number; state:AttentionState; reasons:string[]; }
+export interface AttentionAssessment { score:number; state:AttentionState; reasons:string[]; modelVersion:string; }
+
+export interface AttentionModelConfig{
+ version:string;
+ sessionWeight:number;
+ passiveWeight:number;
+ interactionWeight:number;
+ reopenWeight:number;
+ switchWeight:number;
+ intentWeight:number;
+ lateNightWeight:number;
+ notificationWeight:number;
+ ignoredWeight:number;
+ focusedThreshold:number;
+ intentionalThreshold:number;
+ neutralThreshold:number;
+ driftingThreshold:number;
+}
 export interface InterventionProfile {
   successByIntervention:Partial<Record<Intervention,number>>;
   attemptsByIntervention:Partial<Record<Intervention,number>>;
