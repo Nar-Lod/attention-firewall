@@ -58,7 +58,8 @@ export async function completeRegistration(
  challenges:ChallengeStore,
  response:RegistrationResponseJSON,
  config:PasskeyConfig,
- now=Date.now()
+ now=Date.now(),
+ persist=true
 ):Promise<StoredPasskey>{
  const challenge=await challenges.take("reg:"+user.id,now);
  if(!challenge)throw new Error("invalid or expired challenge");
@@ -79,7 +80,7 @@ export async function completeRegistration(
   backedUp:info.credentialBackedUp
  };
 
- await store.save(user.id,passkey);
+ if(persist)await store.save(user.id,passkey);
  return passkey;
 }
 
