@@ -2,6 +2,5 @@
   "framework":"nextjs",
   "installCommand":"pnpm install --no-frozen-lockfile",
   "buildCommand":"pnpm --filter @attention-firewall/web... build",
-  "devCommand":"pnpm --filter @attention-firewall/web dev",
-  "ignoreCommand":"git diff --quiet HEAD^ HEAD ./apps/web ./packages ./services"
+  "devCommand":"pnpm --filter @attention-firewall/web dev"
 }
