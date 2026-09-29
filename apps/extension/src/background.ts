@@ -19,12 +19,12 @@ chrome.permissions.onAdded.addListener(()=>void syncProtection());
 chrome.permissions.onRemoved.addListener(()=>void handlePermissionRemoved());
 
 chrome.runtime.onMessage.addListener((message:unknown,sender)=>{
- if(messageType(message)==="ENABLE_WEB_PROTECTION"){
-  void enableWebProtection();
-  return;
- }
- if(messageType(message)==="DISABLE_WEB_PROTECTION"){
-  void disableWebProtection();
+ const control=messageType(message);
+ if(control==="ENABLE_WEB_PROTECTION"||control==="DISABLE_WEB_PROTECTION"||control==="CLEAR_LOCAL_DATA"){
+  if(!sender.url?.startsWith(chrome.runtime.getURL("")))return;
+  if(control==="ENABLE_WEB_PROTECTION")void enableWebProtection();
+  else if(control==="DISABLE_WEB_PROTECTION")void disableWebProtection();
+  else void clearLocalData();
   return;
  }
  if(sender.tab?.id===undefined)return;
@@ -71,6 +71,14 @@ async function disableWebProtection(){
  await unregisterDetector();
  await chrome.storage.local.set({webProtectionEnabled:false});
  runtimes.clear();
+ pendingRecovery.clear();
+}
+
+async function clearLocalData(){
+ await unregisterDetector();
+ await chrome.storage.local.clear();
+ runtimes.clear();
+ pendingRecovery.clear();
 }
 
 async function handlePermissionRemoved(){
