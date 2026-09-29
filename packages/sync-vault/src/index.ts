@@ -55,7 +55,8 @@ export function validateVaultEnvelope(value:unknown):VaultEnvelope{
  if(!value||typeof value!=="object")throw new Error("invalid vault envelope");
  const v=value as Record<string,unknown>;
  if(v.version!==1||v.algorithm!=="AES-GCM"||v.kdf!=="PBKDF2-SHA-256")throw new Error("unsupported vault version");
- if(!Number.isInteger(v.iterations)||Number(v.iterations)<600000||Number(v.iterations)>2_000_000)throw new Error("invalid KDF work factor");
+ const iterationsValue=v.iterations;
+ if(typeof iterationsValue!=="number"||!Number.isInteger(iterationsValue)||iterationsValue<600000||iterationsValue>2_000_000)throw new Error("invalid KDF work factor");
  if(typeof v.salt!=="string"||v.salt.length<16||v.salt.length>128)throw new Error("invalid salt");
  if(typeof v.iv!=="string"||v.iv.length<12||v.iv.length>64)throw new Error("invalid iv");
  if(typeof v.ciphertext!=="string"||v.ciphertext.length<1||v.ciphertext.length>350_000)throw new Error("invalid ciphertext");
@@ -63,7 +64,7 @@ export function validateVaultEnvelope(value:unknown):VaultEnvelope{
   version:1,
   algorithm:"AES-GCM",
   kdf:"PBKDF2-SHA-256",
-  iterations:v.iterations,
+  iterations:iterationsValue,
   salt:v.salt,
   iv:v.iv,
   ciphertext:v.ciphertext
