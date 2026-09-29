@@ -27,12 +27,31 @@ const defaults:ExtensionState={
  privacy:{telemetryOptIn:false,researchOptIn:false}
 };
 
-const store=new EncryptedIndexedDbStore<ExtensionState>("extension-state-v2","attention-firewall-extension-state");
+const store=new EncryptedIndexedDbStore<ExtensionState>(
+ "extension-state-v2",
+ "attention-firewall-extension-state"
+);
 
 export async function getLocalState():Promise<ExtensionState>{
  const existing=await store.get();
- if(existing?.version===2)return {...defaults,...existing};
- const legacy=await chrome.storage.local.get(["currentIntent","protectionMode","dailySummary","dailyHistory","interventionProfile","rules","commitments"]);
+
+ if(existing?.version===2){
+  const merged:{[K in keyof ExtensionState]:ExtensionState[K]}={...defaults,...existing};
+  const cleaned=sweepLocalState({
+   dailyHistory:merged.dailyHistory??{version:1,days:[]},
+   commitments:merged.commitments,
+   interventionProfile:merged.interventionProfile
+  },Date.now(),30);
+  const next:ExtensionState={...merged,...cleaned};
+  if(JSON.stringify(next)!==JSON.stringify(merged))await store.set(next);
+  return next;
+ }
+
+ const legacy=await chrome.storage.local.get([
+  "currentIntent","protectionMode","dailySummary","dailyHistory",
+  "interventionProfile","rules","commitments"
+ ]);
+
  let migrated:ExtensionState={
   ...defaults,
   currentIntent:legacy.currentIntent as IntentEnvelope|undefined,
@@ -43,11 +62,24 @@ export async function getLocalState():Promise<ExtensionState>{
   rules:Array.isArray(legacy.rules)?legacy.rules as PolicyRule[]:[],
   commitments:Array.isArray(legacy.commitments)?legacy.commitments as Commitment[]:[]
  };
- const cleaned=sweepLocalState({dailyHistory:migrated.dailyHistory??{version:1,days:[]},commitments:migrated.commitments,interventionProfile:migrated.interventionProfile},Date.now(),30);\n migrated={...migrated,...cleaned};\n const hasLegacy=Object.values(legacy).some(value=>value!==undefined);
+
+ const cleaned=sweepLocalState({
+  dailyHistory:migrated.dailyHistory??{version:1,days:[]},
+  commitments:migrated.commitments,
+  interventionProfile:migrated.interventionProfile
+ },Date.now(),30);
+
+ migrated={...migrated,...cleaned};
+
+ const hasLegacy=Object.values(legacy).some(value=>value!==undefined);
  if(hasLegacy){
   await store.set(migrated);
-  await chrome.storage.local.remove(["currentIntent","protectionMode","dailySummary","dailyHistory","interventionProfile","rules","commitments"]);
+  await chrome.storage.local.remove([
+   "currentIntent","protectionMode","dailySummary","dailyHistory",
+   "interventionProfile","rules","commitments"
+  ]);
  }
+
  return migrated;
 }
 
@@ -59,5 +91,8 @@ export async function setLocalState(patch:Partial<ExtensionState>):Promise<Exten
 
 export async function clearLocalState():Promise<void>{
  await store.clear();
- await chrome.storage.local.remove(["currentIntent","protectionMode","dailySummary","dailyHistory","interventionProfile","rules","commitments"]);
+ await chrome.storage.local.remove([
+  "currentIntent","protectionMode","dailySummary","dailyHistory",
+  "interventionProfile","rules","commitments"
+ ]);
 }
