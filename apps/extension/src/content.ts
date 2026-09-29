@@ -24,6 +24,7 @@ function initialize(){
  chrome.runtime.sendMessage({
   type:"SESSION_START",
   protocolVersion:RUNTIME_PROTOCOL_VERSION,
+  eventKind:"session-start",
   domain:safeDomain()
  }).catch(()=>{});
 
@@ -36,6 +37,7 @@ function initialize(){
   chrome.runtime.sendMessage({
    type:"ACTIVITY_SAMPLE",
    protocolVersion:RUNTIME_PROTOCOL_VERSION,
+   eventKind:"sample",
    platform:"web",
    domain:safeDomain(),
    scrollCount:Math.min(scrollCount,500),
@@ -106,11 +108,11 @@ function isInterventionMessage(value:unknown):value is {type:"ATTENTION_INTERVEN
 }
 
 function sendOutcome(intervention:Intervention,outcome:"continued"|"exited"){
- chrome.runtime.sendMessage({type:"INTERVENTION_RESPONSE",intervention,outcome}).catch(()=>{});
+ chrome.runtime.sendMessage({type:"INTERVENTION_RESPONSE",protocolVersion:RUNTIME_PROTOCOL_VERSION,eventKind:"intervention-response",platform:"web",intervention,outcome}).catch(()=>{});
 }
 
 function sendRecoveryCompleted(durationSeconds:number){
- chrome.runtime.sendMessage({type:"RECOVERY_COMPLETED",durationSeconds}).catch(()=>{});
+ chrome.runtime.sendMessage({type:"RECOVERY_COMPLETED",protocolVersion:RUNTIME_PROTOCOL_VERSION,eventKind:"recovery-completed",platform:"web",durationSeconds}).catch(()=>{});
 }
 
 function createButton(label:string,primary:boolean,disabled=false){
