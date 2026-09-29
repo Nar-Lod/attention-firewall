@@ -56,7 +56,7 @@ export class AttentionRuntime{
   return this.session;
  }
 
- sample(sample:{elapsedSeconds:number;interactions:number;scrolls:number;domain?:string;intentMatch?:number;outsideIntent?:boolean;contextSwitches?:number;notificationLaunch?:boolean;lateNightRisk?:number}):RuntimeDecision{
+ sample(sample:{elapsedSeconds:number;interactions:number;scrolls:number;domain?:string;intentMatch?:number;outsideIntent?:boolean;scrollBursts?:number;scrollDirectionChanges?:number;scrollDistancePerMinute?:number;contextSwitches?:number;notificationLaunch?:boolean;lateNightRisk?:number}):RuntimeDecision{
   if(!this.session)this.begin("local");
   const session=this.session!;
   const now=this.clock.now();
@@ -84,7 +84,7 @@ export class AttentionRuntime{
 
   const passiveLoop=detectPassiveScrollLoop({
    sessionSeconds:session.elapsedSeconds,repeatedOpens:session.recentReopens,recentReopens:session.recentReopens,
-   passiveSeconds:session.passiveSeconds,interactionRate,scrollEventsPerMinute,
+   passiveSeconds:session.passiveSeconds,interactionRate,scrollEventsPerMinute,scrollBursts:sample.scrollBursts,scrollDirectionChanges:sample.scrollDirectionChanges,scrollDistancePerMinute:sample.scrollDistancePerMinute,
    contextSwitches:session.contextSwitches,declaredIntentMatch:session.intentMatch,
    outsideIntent:session.outsideIntent,lateNightRisk:session.lateNightRisk,
    notificationLaunch:session.notificationLaunch,previousInterventionIgnored:session.previousInterventionIgnored
