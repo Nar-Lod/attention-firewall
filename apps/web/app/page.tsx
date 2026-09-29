@@ -7,6 +7,7 @@ import {emptyDay,pruneHistory,upsertDay,type DailyHistory} from "@attention-fire
 import {EncryptedIndexedDbStore} from "@attention-firewall/secure-browser-store";
 import {normalizeDomain} from "@attention-firewall/intent-engine";
 import type {InterventionProfile} from "@attention-firewall/attention-engine";
+import type {PolicyRule} from "@attention-firewall/policy-engine";
 
 type Purpose="work"|"study"|"communication"|"entertainment"|"rest"|"other";
 type Mode="adaptive"|"strict";
@@ -21,7 +22,7 @@ type LocalIntent={
 type Profile={
  version:1;
  intent?:LocalIntent;
- rules:[];
+ rules:PolicyRule[];
  interventionProfile:InterventionProfile;
  privacy:{telemetryOptIn:boolean;researchOptIn:boolean};
 };
@@ -71,29 +72,14 @@ export default function Home(){
   })();
  },[loaded,historyStore,profileStore]);
 
- const twin=useMemo(
-  ()=>buildAttentionTwin(history.days,profile.interventionProfile),
-  [history,profile.interventionProfile]
- );
+ const twin=useMemo(()=>buildAttentionTwin(history.days,profile.interventionProfile),[history,profile.interventionProfile]);
 
- const saveState=async(nextProfile:Profile,nextHistory:DailyHistory)=>{
+ const persistState=async(nextProfile:Profile,nextHistory:DailyHistory)=>{
   setProfile(nextProfile);
   setHistory(nextHistory);
   setSummary(nextHistory.days[0]??emptyDay());
   await profileStore.set(nextProfile);
   await historyStore.set(nextHistory);
- };
-
- const persistRuntime=async(rt:AttentionRuntime,nextProfile?:Profile)=>{
-  const current=rt.getSummary();
-  const existing=await historyStore.get()??{version:1,days:[]};
-  const nextHistory=pruneHistory(upsertDay(existing,current),30);
-  const nextProfile:Profile=nextProfile??{
-   ...profile,
-   interventionProfile:rt.getInterventionProfile()
-  };
-  await saveState(nextProfile,nextHistory);
-  setStatus("Local state saved.");
  };
 
  const start=()=>{
@@ -102,6 +88,7 @@ export default function Home(){
    setStatus("Add an intent and at least one target domain.");
    return;
   }
+
   const startedAt=Date.now();
   const parsedBudget=Number(budget);
   const currentIntent:LocalIntent={
@@ -112,19 +99,21 @@ export default function Home(){
    startedAt,
    budgetMinutes:Number.isFinite(parsedBudget)&&parsedBudget>=1&&parsedBudget<=240?Math.floor(parsedBudget):undefined
   };
+
   const rt=new AttentionRuntime({
    protectionMode:mode,
    profile:profile.interventionProfile,
-   rules:[],
+   rules:profile.rules,
    attentionTwin:twin,
    intent:currentIntent
   },undefined,summary);
+
   rt.begin(targetDomains[0]!);
   setRuntime(rt);
+  setProfile({...profile,intent:currentIntent});
   setAssessment(null);
   setDecision("none");
   setRecovery(0);
-  setProfile({...profile,intent:currentIntent});
   setStatus("Local session started.");
  };
 
@@ -138,21 +127,24 @@ export default function Home(){
    domain:target,
    lateNightRisk:0
   });
+
   setAssessment(result.assessment);
   setDecision(result.intervention);
   setRecovery(result.recoveryMinutes);
-  const nextProfile={
+
+  const nextProfile:Profile={
    ...profile,
-   intent:runtime["config"]?.intent,
    interventionProfile:runtime.getInterventionProfile()
-  } as Profile;
-  void persistRuntime(runtime,nextProfile);
+  };
+  void persistState(nextProfile,pruneHistory(upsertDay(history,result.dailySummary),30));
  };
 
  const respond=(outcome:"exited"|"continued")=>{
   if(!runtime||decision==="none"){setStatus("There is no active intervention.");return;}
   runtime.respond(decision,outcome);
-  setProfile({...profile,interventionProfile:runtime.getInterventionProfile()});
+  const nextProfile:Profile={...profile,interventionProfile:runtime.getInterventionProfile()};
+  setProfile(nextProfile);
+  void profileStore.set(nextProfile);
   setStatus(outcome==="exited"?"Intervention accepted locally.":"Continuation recorded locally.");
  };
 
@@ -195,7 +187,7 @@ export default function Home(){
     <p>{assessment?.reasons.length?assessment.reasons.join(" · "):"No intervention is active."}</p>
     <button onClick={()=>sample(false)}>Simulate intentional minute</button>
     <button onClick={()=>sample(true)} style={{marginLeft:8}}>Simulate passive scroll</button>
-    {decision!=="none"&&<div style={{marginTop:16}}><button onClick={()=>respond("exited")}>Exit & record recovery</button><button onClick={()=>respond("continued")} style={{marginLeft:8}}>Continue intentionally</button></div>}
+    {decision!=="none"&&<div style={{marginTop:16}}><button onClick={()=>respond("exited")}>Exit & record</button><button onClick={()=>respond("continued")} style={{marginLeft:8}}>Continue intentionally</button></div>}
    </article>
 
    <article className="card">
