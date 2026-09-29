@@ -90,7 +90,6 @@ class AttentionAccessibilityService : AccessibilityService() {
         val proposedLocal = LocalIntervention.valueOf(proposed.name)
         val intervention = LocalPolicyEngine.enforce(proposedLocal, packageName, minuteOfDay, policyStore.getRules())
         if (intervention != LocalIntervention.NONE) {
-            recordRuntimeEvent(LocalRuntimeEvent.InterventionResponse("android", intervention.name.lowercase(), LocalRuntimeEvent.Outcome.CONTINUED))
             showIntervention(intervention)
         }
     }
