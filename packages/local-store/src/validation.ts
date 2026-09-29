@@ -1,4 +1,5 @@
 import type {LocalProfile} from "./schema.js";
+import {validateCommitment} from "@attention-firewall/commitment-engine";
 
 const purposes=new Set(["work","study","communication","entertainment","rest","other"]);
 const targets=new Set(["site","category","all-web"]);
@@ -7,7 +8,9 @@ const levels=new Set(["awareness","deliberation","pause","delay","commitment","l
 export function parseLocalProfile(value:unknown):LocalProfile{
  if(!value||typeof value!=="object")throw new Error("invalid profile");
  const v=value as Record<string,unknown>;
- if(v.version!==1||!Array.isArray(v.rules)||!v.interventionProfile||!v.privacy)throw new Error("invalid profile shape");
+ if(v.version!==1||!Array.isArray(v.rules)||!Array.isArray(v.commitments)||!v.interventionProfile||!v.privacy)throw new Error("invalid profile shape");
+ if(v.commitments.length>50)throw new Error("too many commitments");
+ for(const commitment of v.commitments)validateCommitment(commitment);
  if(v.rules.length>100)throw new Error("too many rules");
 
  for(const rule of v.rules){
