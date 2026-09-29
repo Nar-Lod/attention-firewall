@@ -15,7 +15,7 @@ describe("auth core",()=>{
   expect(result.challenge.length).toBeGreaterThan(20);
   expect(result.options.user.name).toBe("attention-user");
   expect(result.options.authenticatorSelection?.residentKey).toBe("required");
-  expect(result.options.authenticatorSelection?.userVerification).toBe("preferred");
+  expect(result.options.authenticatorSelection?.userVerification).toBe("required");
  });
 
  it("generates discoverable authentication options when credentials are not enumerated",async()=>{
