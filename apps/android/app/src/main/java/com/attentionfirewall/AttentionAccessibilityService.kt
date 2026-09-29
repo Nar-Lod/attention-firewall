@@ -187,7 +187,12 @@ class AttentionAccessibilityService : AccessibilityService() {
 
     private fun startRecovery(root: View) {
         recoveryTimer?.cancel()
-        val button = (root as? ViewGroup)?.let { group -> (0 until group.childCount).map { group.getChildAt(it) }.filterIsInstance<Button>().firstOrNull() }
+        val button = (root as? ViewGroup)?.let { group ->
+            (0 until group.childCount)
+                .map { group.getChildAt(it) }
+                .filterIsInstance<Button>()
+                .firstOrNull { it.text.toString().startsWith("Start 2-minute recovery") }
+        }
         button?.isEnabled = false
         button?.text = "Recovering… 2:00"
         recoveryTimer = object : CountDownTimer(120_000L, 1_000L) {
