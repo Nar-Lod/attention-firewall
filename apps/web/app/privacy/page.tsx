@@ -3,42 +3,49 @@
 import {useMemo,useState} from "react";
 import {EncryptedIndexedDbStore} from "@attention-firewall/secure-browser-store";
 import {encryptJson} from "@attention-firewall/security-core";
+import {buildSyncableSettings} from "@attention-firewall/sync-vault";
 
-interface LocalProfile{
+type LocalProfile={
  version:1;
  intent?:unknown;
  rules:unknown[];
+ commitments:unknown[];
  interventionProfile:unknown;
  privacy:{telemetryOptIn:boolean;researchOptIn:boolean};
-}
+};
 
 export default function PrivacyPage(){
  const [message,setMessage]=useState("");
  const [passphrase,setPassphrase]=useState("");
- const store=useMemo(()=>new EncryptedIndexedDbStore<LocalProfile>(),[]);
+ const profileStore=useMemo(()=>new EncryptedIndexedDbStore<LocalProfile>("profile-v2","attention-firewall-web-profile"),[]);
+ const historyStore=useMemo(()=>new EncryptedIndexedDbStore<unknown>("history-v2","attention-firewall-web-history"),[]);
 
  const clear=async()=>{
-  await store.clear();
+  await profileStore.clear();
+  await historyStore.clear();
   localStorage.removeItem("attention-firewall.profile");
-  setMessage("Local profile cleared.");
+  setMessage("All local Attention Firewall data was deleted from this browser.");
  };
 
  const localOnly=async()=>{
-  const profile:LocalProfile={
-   version:1,
-   rules:[],
-   interventionProfile:{},
+  const existing=(await profileStore.get())??{
+   version:1,rules:[],commitments:[],interventionProfile:{},
    privacy:{telemetryOptIn:false,researchOptIn:false}
   };
-  await store.set(profile);
-  setMessage("Local-only mode is enabled. No cloud telemetry is required.");
+  await profileStore.set({...existing,privacy:{telemetryOptIn:false,researchOptIn:false}});
+  setMessage("Local-only mode is enabled. No behavioral telemetry is required.");
  };
 
  const exportEncrypted=async()=>{
   try{
    if(passphrase.length<12){setMessage("Use a passphrase of at least 12 characters.");return;}
-   const profile=await store.get();
-   const blob=await encryptJson({exportedAt:new Date().toISOString(),profile},passphrase);
+   const profile=(await profileStore.get())??{
+    version:1,rules:[],commitments:[],interventionProfile:{},
+    privacy:{telemetryOptIn:false,researchOptIn:false}
+   };
+   const syncable=buildSyncableSettings(profile);
+   const localBackup=await historyStore.get();
+   const blob=await encryptJson({exportedAt:new Date().toISOString(),settings:syncable,localHistory:localBackup},passphrase);
    const file=new Blob([JSON.stringify(blob,null,2)],{type:"application/json"});
    const url=URL.createObjectURL(file);
    const link=document.createElement("a");
@@ -48,21 +55,23 @@ export default function PrivacyPage(){
    link.click();
    link.remove();
    URL.revokeObjectURL(url);
-   setMessage("Encrypted export created locally.");
+   setMessage("Encrypted local export created. The passphrase never leaves this browser.");
   }catch{
    setMessage("Export failed. No data was uploaded.");
   }
  };
 
  return <main className="privacy-page">
-  <a href="/">← Dashboard</a>
+  <nav><a href="/">← Dashboard</a> · <a href="/insights">Insights</a> · <a href="/account">Security</a></nav>
+  <p className="eyebrow" style={{marginTop:32}}>DATA CONTROL</p>
   <h1>Privacy Center</h1>
-  <p className="lead">Detailed attention data is designed to remain on your device. These controls operate locally in this browser.</p>
+  <p className="lead">Attention Firewall is designed local-first. Detailed behavioral state and learned intervention outcomes stay encrypted on this device unless you explicitly export them.</p>
   <section className="privacy-grid">
-   <div className="privacy-card"><h2>Local-only mode</h2><p>Use the product without an account or behavioral telemetry.</p><button onClick={localOnly}>Enable local-only mode</button></div>
-   <div className="privacy-card"><h2>Encrypted export</h2><p>Create a device-only encrypted backup. The passphrase is never transmitted.</p><input aria-label="Export passphrase" type="password" minLength={12} value={passphrase} onChange={e=>setPassphrase(e.target.value)} placeholder="12+ character passphrase"/><button onClick={exportEncrypted}>Export encrypted copy</button></div>
-   <div className="privacy-card"><h2>Delete local profile</h2><p>Removes locally stored settings and learned intervention outcomes for this browser.</p><button onClick={clear}>Delete local profile</button></div>
+   <div className="privacy-card"><h2>Local-only mode</h2><p>Disables telemetry preferences while keeping the protection loop entirely on-device.</p><button onClick={localOnly}>Enable local-only mode</button></div>
+   <div className="privacy-card"><h2>Encrypted export</h2><p>Create a device-only encrypted backup containing your explicit configuration and local history. The passphrase is never transmitted.</p><input aria-label="Export passphrase" type="password" minLength={12} value={passphrase} onChange={e=>setPassphrase(e.target.value)} placeholder="12+ character passphrase"/><button onClick={exportEncrypted}>Export encrypted copy</button></div>
+   <div className="privacy-card"><h2>Delete all local data</h2><p>Removes both the encrypted profile and encrypted local history from this browser.</p><button onClick={clear}>Delete local data</button></div>
   </section>
   {message&&<p className="privacy-message">{message}</p>}
+  <footer><span>Cloud sync is optional and excludes behavioral history.</span><a href="/account">Security Center →</a></footer>
  </main>;
 }
