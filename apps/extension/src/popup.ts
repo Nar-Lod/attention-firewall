@@ -32,6 +32,7 @@ Promise.all([getLocalState(),chrome.storage.local.get("webProtectionEnabled")]).
 });
 
 document.getElementById("save")?.addEventListener("click",async()=>{
+ const previous=await getLocalState();
  const label=intentEl.value.trim().slice(0,120);
  const targetDomains=domainsEl.value.split(",").map(v=>normalizeDomain(v)).filter(Boolean).slice(0,30);
  const purpose=normalizePurpose(purposeEl.value);
@@ -40,6 +41,10 @@ document.getElementById("save")?.addEventListener("click",async()=>{
 
  if(!label){statusEl.textContent="Add an intent first.";return;}
 
+ if((await chrome.storage.local.get("webProtectionEnabled")).webProtectionEnabled===true){
+  await chrome.runtime.sendMessage({type:"DISABLE_WEB_PROTECTION"});
+  renderWebStatus(false);
+ }
  await setLocalState({
   currentIntent:{id:crypto.randomUUID(),label,targetDomains,startedAt:Date.now(),purpose,...(budgetMinutes===undefined?{}:{budgetMinutes})},
   protectionMode:modeEl.value==="strict"?"strict":"adaptive"
@@ -50,7 +55,14 @@ document.getElementById("save")?.addEventListener("click",async()=>{
 enableWeb?.addEventListener("click",async()=>{
  enableWeb.disabled=true;
  try{
-  const granted=await chrome.permissions.request({origins:["https://*/*"]});
+  const stored=await getLocalState();
+  const patterns=hostPatterns(stored.currentIntent?.targetDomains??[]);
+  if(patterns.length===0){
+   renderWebStatus(false);
+   webStatusEl.textContent="Add at least one protected site before enabling Web Protection.";
+   return;
+  }
+  const granted=await chrome.permissions.request({origins:patterns});
   if(!granted){
    renderWebStatus(false);
    webStatusEl.textContent="Not enabled. No website access was granted.";
@@ -93,6 +105,13 @@ function renderSummary(summary:DailySummary|undefined){
  const attempts=summary?.interventionsShown??0;
  const exits=summary?.interventionsAccepted??0;
  accepted.textContent=attempts?Math.round((exits/attempts)*100)+"%":"0%";
+}
+
+function hostPatterns(domains:string[]):string[]{
+ return [...new Set(domains.flatMap(domain=>domain?[
+  "https://"+domain+"/*",
+  "https://*."+domain+"/*"
+ ]:[]))].slice(0,60);
 }
 
 function normalizePurpose(value:string):Purpose{
