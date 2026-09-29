@@ -1,13 +1,14 @@
 import {describe,expect,it} from "vitest";
 import {AttentionRuntime} from "@attention-firewall/attention-runtime";
 import {fixtures} from "../src/fixtures.js";
+import type {Commitment} from "@attention-firewall/commitment-engine";
 
 function baseConfig(){
  return {
   protectionMode:"adaptive" as const,
   profile:{successByIntervention:{},attemptsByIntervention:{}},
   rules:[],
-  commitments:[],
+  commitments:[] as Commitment[],
   intent:{id:"i1",label:"Study",purpose:"study" as const,targetDomains:["example.com"],startedAt:0,budgetMinutes:120}
  };
 }
