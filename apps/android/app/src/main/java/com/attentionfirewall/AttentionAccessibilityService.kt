@@ -127,7 +127,7 @@ class AttentionAccessibilityService : AccessibilityService() {
         root.addView(body)
         root.addView(leave)
 
-        if (intervention != Intervention.LOCK) {
+        if (intervention != LocalIntervention.LOCK) {
             root.addView(Button(this).apply {
                 text = "Continue intentionally"
                 setOnClickListener { removeIntervention() }
