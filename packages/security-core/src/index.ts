@@ -13,34 +13,37 @@ const decoder=new TextDecoder();
 
 function bytesToBase64(bytes:Uint8Array):string{
   let binary="";
-  for(const b of bytes) binary+=String.fromCharCode(b);
+  for(const b of bytes)binary+=String.fromCharCode(b);
   return btoa(binary);
 }
 function base64ToBytes(value:string):Uint8Array{
   const binary=atob(value);
   const out=new Uint8Array(binary.length);
-  for(let i=0;i<binary.length;i++) out[i]=binary.charCodeAt(i);
+  for(let i=0;i<binary.length;i++)out[i]=binary.charCodeAt(i);
   return out;
 }
+function bufferSource(value:Uint8Array):BufferSource{
+  return value as unknown as BufferSource;
+}
 async function deriveKey(secret:string,salt:Uint8Array,iterations:number):Promise<CryptoKey>{
-  const material=await crypto.subtle.importKey("raw",encoder.encode(secret),"PBKDF2",false,["deriveKey"]);
-  return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations,hash:"SHA-256"},material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  const material=await crypto.subtle.importKey("raw",bufferSource(encoder.encode(secret)),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt:bufferSource(salt),iterations,hash:"SHA-256"},material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
 }
 
 export async function encryptJson(value:unknown,secret:string,iterations=600000):Promise<EncryptedBlob>{
-  if(!secret) throw new Error("encryption secret required");
+  if(!secret)throw new Error("encryption secret required");
   const salt=crypto.getRandomValues(new Uint8Array(16));
   const iv=crypto.getRandomValues(new Uint8Array(12));
   const key=await deriveKey(secret,salt,iterations);
   const plaintext=encoder.encode(JSON.stringify(value));
-  const ciphertext=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,plaintext);
+  const ciphertext=await crypto.subtle.encrypt({name:"AES-GCM",iv:bufferSource(iv)},key,bufferSource(plaintext));
   return {version:1,algorithm:"AES-GCM",kdf:"PBKDF2-SHA-256",iterations,salt:bytesToBase64(salt),iv:bytesToBase64(iv),ciphertext:bytesToBase64(new Uint8Array(ciphertext))};
 }
 
 export async function decryptJson<T>(blob:EncryptedBlob,secret:string):Promise<T>{
-  if(blob.version!==1||blob.algorithm!=="AES-GCM"||blob.kdf!=="PBKDF2-SHA-256") throw new Error("unsupported encrypted blob");
+  if(blob.version!==1||blob.algorithm!=="AES-GCM"||blob.kdf!=="PBKDF2-SHA-256")throw new Error("unsupported encrypted blob");
   const key=await deriveKey(secret,base64ToBytes(blob.salt),blob.iterations);
-  const plaintext=await crypto.subtle.decrypt({name:"AES-GCM",iv:base64ToBytes(blob.iv)},key,base64ToBytes(blob.ciphertext));
+  const plaintext=await crypto.subtle.decrypt({name:"AES-GCM",iv:bufferSource(base64ToBytes(blob.iv))},key,bufferSource(base64ToBytes(blob.ciphertext)));
   return JSON.parse(decoder.decode(plaintext)) as T;
 }
 
