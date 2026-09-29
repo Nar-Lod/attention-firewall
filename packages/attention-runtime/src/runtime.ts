@@ -13,7 +13,7 @@ export class AttentionRuntime{
   this.summary=initialSummary.date===todayKey()?initialSummary:emptyDay();
  }
 
- setSummary(summary:DailySummary){
+ setConfig(config:Partial<RuntimeConfig>){\n  Object.assign(this.config,config);\n }\n\n setSummary(summary:DailySummary){
   this.summary=summary.date===todayKey()?summary:emptyDay();
  }
 
