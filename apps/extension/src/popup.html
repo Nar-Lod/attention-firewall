@@ -8,7 +8,7 @@ button{margin-top:16px;padding:11px 14px;border:0;background:#b83343;color:#fff;
 hr{border:0;border-top:1px solid #292929;margin:20px 0}
 </style></head><body>
 <h1>Attention Firewall</h1><div class="muted">Your intent, activity features, learned interventions and daily aggregates remain local to this browser.</div>
-<label for="intent">Current intent</label><input id="intent" maxlength="120" placeholder="e.g. Research for 20 minutes">
+<label for="intent">Current intent</label><input id="intent" maxlength="120" placeholder="e.g. Research for 20 minutes"><label for="purpose">Purpose</label><select id="purpose"><option value="work">Work</option><option value="study">Study</option><option value="communication">Communication</option><option value="entertainment">Entertainment</option><option value="rest">Rest</option><option value="other">Other</option></select><label for="budget">Budget (minutes)</label><input id="budget" type="number" min="1" max="240" placeholder="30">
 <label for="domains">Allowed domains for this intent</label><input id="domains" maxlength="500" placeholder="docs.google.com, scholar.google.com">
 <label for="mode">Protection mode</label><select id="mode"><option value="adaptive">Adaptive</option><option value="strict">Strict</option></select>
 <button id="save" type="button">Save locally</button><button id="webProtection" type="button">Enable Web Protection</button><button id="disableWebProtection" type="button">Disable Web Protection</button><hr>
