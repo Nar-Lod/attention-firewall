@@ -75,7 +75,7 @@ export class AttentionRuntime{
   session.notificationLaunch=Boolean(sample.notificationLaunch);
   session.lateNightRisk=Math.max(0,Math.min(sample.lateNightRisk??0,1));
 
-  const passiveSample=sample.interactions===0&&sample.scrolls>0 || (sample.scrolls>=20&&sample.scrolls>=sample.interactions*10);\n  if(passiveSample){
+  const passiveSample=(sample.interactions===0&&sample.scrolls>0)||(sample.scrolls>=20&&sample.scrolls>=sample.interactions*10);\n  if(passiveSample){
    session.passiveSeconds=Math.min(session.passiveSeconds+elapsed,session.elapsedSeconds);
   }
 
@@ -114,7 +114,7 @@ export class AttentionRuntime{
   if(preemptive&&selected.intervention==="none"){
    selected={...selected,intervention:"awareness",reason:"Local Attention Twin indicates a high-risk attention window."};
   }
-  const budget= this.config.intent ? budgetStatus(this.config.intent, session.elapsedSeconds) : "none";\n  if(budget==="approaching" && selected.intervention==="none") selected={...selected,intervention:"awareness",reason:"Your local intent budget is nearly reached."};\n  if(budget==="exceeded" && selected.intervention==="none") selected={...selected,intervention:"pause",reason:"Your local intent budget has been reached."};\n  const policyIntervention=applyPolicy(selected.intervention,this.config.rules,{domain:sample.domain??"web",minuteOfDay:currentHour*60+new Date(now).getMinutes()});
+  const budget=this.config.intent?budgetStatus(this.config.intent,session.elapsedSeconds):"none";\n  if(budget==="approaching"&&selected.intervention==="none")selected={...selected,intervention:"awareness",reason:"Your local intent budget is nearly reached."};\n  if(budget==="exceeded"&&selected.intervention==="none")selected={...selected,intervention:"pause",reason:"Your local intent budget has been reached."};\n  const policyIntervention=applyPolicy(selected.intervention,this.config.rules,{domain:sample.domain??"web",minuteOfDay:currentHour*60+new Date(now).getMinutes()});
   const commitmentIntervention=applyCommitments(policyIntervention,this.config.commitments,sample.domain??"web",now);
   const intervention=cooldownActive?"none":commitmentIntervention;
 
