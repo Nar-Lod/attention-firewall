@@ -6,6 +6,6 @@ export interface LocalProfile{
  privacy:{telemetryOptIn:boolean;researchOptIn:boolean};
 }
 export const DEFAULT_PROFILE:LocalProfile={
- version:1,rules:[],interventionProfile:{successByIntervention:{},attemptsByIntervention:{}},
+ version:1,rules:[],commitments:[],interventionProfile:{successByIntervention:{},attemptsByIntervention:{}},
  privacy:{telemetryOptIn:false,researchOptIn:false}
 };
