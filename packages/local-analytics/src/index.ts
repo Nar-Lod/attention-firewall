@@ -18,8 +18,14 @@ export function addDailySeconds(summary:DailySummary,field:"intentionalSeconds"|
  if(!Number.isFinite(seconds)||seconds<0)throw new Error("seconds must be non-negative");
  return {...summary,[field]:Math.min(summary[field]+seconds,86400)};
 }
+export function recordInterventionShown(summary:DailySummary):DailySummary{
+ return {...summary,interventionsShown:Math.min(summary.interventionsShown+1,1000)};
+}
+export function recordInterventionOutcome(summary:DailySummary,accepted:boolean):DailySummary{
+ return {...summary,interventionsAccepted:Math.min(summary.interventionsAccepted+(accepted?1:0),summary.interventionsShown)};
+}
 export function recordIntervention(summary:DailySummary,accepted:boolean):DailySummary{
- return {...summary,interventionsShown:Math.min(summary.interventionsShown+1,1000),interventionsAccepted:Math.min(summary.interventionsAccepted+(accepted?1:0),1000)};
+ return recordInterventionOutcome(recordInterventionShown(summary),accepted);
 }
 export function recordDriftEpisode(summary:DailySummary):DailySummary{
  return {...summary,driftEpisodes:Math.min(summary.driftEpisodes+1,1000)};
