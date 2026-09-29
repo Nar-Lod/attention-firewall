@@ -1,5 +1,6 @@
 import type {Commitment} from "@attention-firewall/commitment-engine";
 import {pruneHistory,type DailyHistory} from "@attention-firewall/local-analytics";
+import type {SecurityEvent} from "@attention-firewall/security-audit";
 
 export interface InterventionProfileSnapshot{
  successByIntervention:Record<string,number>;
@@ -10,15 +11,18 @@ export interface LocalLifecycleState{
  dailyHistory:DailyHistory;
  commitments:Commitment[];
  interventionProfile:InterventionProfileSnapshot;
+ securityEvents?:SecurityEvent[];
 }
 
 export function sweepLocalState(state:LocalLifecycleState,now=Date.now(),maxDays=30):LocalLifecycleState{
  const commitments=state.commitments.filter(commitment=>commitment.endAt>now);
  const profile:safeProfile=normalizeProfile(state.interventionProfile);
+ const securityEvents=(state.securityEvents??[]).filter(event=>Number.isFinite(event.occurredAt)&&now-event.occurredAt<=90*24*60*60_000).slice(0,100);
  return {
   dailyHistory:pruneHistory(state.dailyHistory,maxDays,new Date(now).toISOString().slice(0,10)),
   commitments,
-  interventionProfile:profile
+  interventionProfile:profile,
+  securityEvents
  };
 }
 
