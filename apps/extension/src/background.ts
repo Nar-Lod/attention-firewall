@@ -55,6 +55,7 @@ async function evaluate(tabId:number,session:Session){
   const stored=await chrome.storage.local.get(["currentIntent","interventionProfile"]);
   const intent=stored.currentIntent as LocalIntent|undefined;
   const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{}};
+  const strict=(stored.protectionMode as string|undefined)==="strict";
   const intentDomains=new Set((intent?.targetDomains??[]).map(v=>v.toLowerCase()));
   const outsideIntent=Boolean(intent&&intentDomains.size>0&&!intentDomains.has(session.domain.toLowerCase()));
   const declaredIntentMatch=intentDomains.size===0||intentDomains.has(session.domain.toLowerCase())?1:0;
@@ -73,7 +74,7 @@ async function evaluate(tabId:number,session:Session){
   const decision=chooseIntervention(assessment,{
     successByIntervention:profile.successByIntervention as never,
     attemptsByIntervention:profile.attemptsByIntervention as never
-  });
+  },{strict});
   if(decision.intervention!=="none"){
     session.lastInterventionAt=Date.now();
     void recordInterventionShown();
