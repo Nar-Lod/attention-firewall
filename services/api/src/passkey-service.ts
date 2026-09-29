@@ -10,7 +10,7 @@ import type {AuthenticationResponseJSON,RegistrationResponseJSON} from "@simplew
 
 export interface ChallengeStore{
  put(key:string,challenge:string,expiresAt:number):Promise<void>;
- consume(key:string,challenge:string,now:number):Promise<boolean>;
+ take(key:string,now:number):Promise<string|null>;
 }
 
 export interface PasskeyStore{
@@ -29,7 +29,7 @@ export interface PasskeyConfig{
 
 export class DisabledChallengeStore implements ChallengeStore{
  async put():Promise<void>{throw new Error("challenge persistence not configured")}
- async consume():Promise<boolean>{return false}
+ async take():Promise<string|null>{throw new Error("challenge persistence not configured")}
 }
 
 export class DisabledPasskeyStore implements PasskeyStore{
@@ -39,26 +39,48 @@ export class DisabledPasskeyStore implements PasskeyStore{
  async updateCounter():Promise<void>{throw new Error("passkey persistence not configured")}
 }
 
-export async function beginRegistration(user:AuthUser,store:PasskeyStore,challenges:ChallengeStore,config:PasskeyConfig,now=Date.now()){
+export async function beginRegistration(
+ user:AuthUser,
+ store:PasskeyStore,
+ challenges:ChallengeStore,
+ config:PasskeyConfig,
+ now=Date.now()
+){
  const passkeys=await store.list(user.id);
  const result=await createRegistrationOptions(user,passkeys,config.rpName,config.rpID);
- const key="reg:"+user.id;
- await challenges.put(key,result.challenge,now+config.challengeTtlMs);
+ await challenges.put("reg:"+user.id,result.challenge,now+config.challengeTtlMs);
  return result;
 }
 
 export async function completeRegistration(
- user:AuthUser,
+ userId:string,
  store:PasskeyStore,
  challenges:ChallengeStore,
  response:RegistrationResponseJSON,
  config:PasskeyConfig,
  now=Date.now()
-){
- const key="reg:"+user.id;
- const expected=await challenges.consume(key,"__peek__",now);
- if(expected)throw new Error("invalid challenge state");
- throw new Error("challenge retrieval must be implemented by a transactional challenge store");
+):Promise<StoredPasskey>{
+ const challenge=await challenges.take("reg:"+userId,now);
+ if(!challenge)throw new Error("invalid or expired challenge");
+
+ const verification=await verifyRegistration(response,challenge,config.origin,config.rpID);
+ if(!verification.verified||!verification.registrationInfo){
+  throw new Error("registration failed");
+ }
+
+ const info=verification.registrationInfo;
+ const passkey:StoredPasskey={
+  id:info.credential.id,
+  publicKey:new Uint8Array(info.credential.publicKey),
+  webauthnUserID:info.credential.id,
+  counter:info.credential.counter,
+  transports:info.credential.transports,
+  deviceType:info.credentialDeviceType,
+  backedUp:info.credentialBackedUp
+ };
+
+ await store.save(userId,passkey);
+ return passkey;
 }
 
 export async function beginAuthentication(
@@ -74,24 +96,29 @@ export async function beginAuthentication(
  return result;
 }
 
-/**
- * Verification accepts the challenge loaded and atomically consumed by the caller's challenge store.
- * Keeping challenge retrieval outside this function makes one-time-use enforcement explicit.
- */
 export async function completeAuthentication(
- passkey:StoredPasskey,
+ userId:string,
+ credentialId:string,
  response:AuthenticationResponseJSON,
- expectedChallenge:string,
+ store:PasskeyStore,
  challenges:ChallengeStore,
- challengeKey:string,
  config:PasskeyConfig,
- now=Date.now(),
- updateCounter:(id:string,counter:number)=>Promise<void>=async()=>{}
+ now=Date.now()
 ){
- const valid=await challenges.consume(challengeKey,expectedChallenge,now);
- if(!valid)throw new Error("invalid or expired challenge");
- const verification=await verifyAuthentication(response,passkey,expectedChallenge,config.origin,config.rpID);
+ const challenge=await challenges.take("auth:"+userId,now);
+ if(!challenge)throw new Error("invalid or expired challenge");
+
+ const passkey=await store.getById(userId,credentialId);
+ if(!passkey)throw new Error("credential not found");
+
+ const verification=await verifyAuthentication(response,passkey,challenge,config.origin,config.rpID);
  if(!verification.verified)throw new Error("authentication failed");
- await updateCounter(passkey.id,verification.authenticationInfo.newCounter);
- return verification;
+
+ await store.updateCounter(passkey.id,verification.authenticationInfo.newCounter);
+ return {
+  verified:true as const,
+  accountId:userId,
+  passkeyId:passkey.id,
+  newCounter:verification.authenticationInfo.newCounter
+ };
 }
