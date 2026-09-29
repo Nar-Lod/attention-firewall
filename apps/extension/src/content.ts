@@ -1,4 +1,5 @@
 type Intervention="none"|"awareness"|"deliberation"|"pause"|"delay"|"commitment"|"lock";
+const RUNTIME_PROTOCOL_VERSION=1;
 declare global { interface Window { __ATTENTION_FIREWALL_INITIALIZED__?:boolean } }
 
 if(!window.__ATTENTION_FIREWALL_INITIALIZED__){
@@ -18,6 +19,7 @@ function initialize(){
   const elapsed=Math.max(1,(now-firstAt)/1000);
   chrome.runtime.sendMessage({
    type:"ACTIVITY_SAMPLE",
+   protocolVersion:RUNTIME_PROTOCOL_VERSION,
    domain:safeDomain(),
    scrollCount:Math.min(scrollCount,500),
    interactionCount:Math.min(interactionCount,500),
