@@ -70,6 +70,7 @@ async function enableWebProtection(){
 
 async function disableWebProtection(){
  await unregisterDetector();
+ await chrome.permissions.remove({origins:["https://*/*"]}).catch(()=>false);
  await chrome.storage.local.set({webProtectionEnabled:false});
  runtimes.clear();
  pendingRecovery.clear();
