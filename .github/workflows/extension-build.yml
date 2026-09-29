@@ -1,0 +1,43 @@
+name: Extension Build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "apps/extension/**"
+      - "packages/attention-*/**"
+      - "packages/intent-engine/**"
+      - "packages/policy-engine/**"
+      - "packages/runtime-protocol/**"
+      - "packages/local-analytics/**"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+          package-manager-cache: false
+      - run: pnpm install --no-frozen-lockfile --allow-build=esbuild
+      - run: pnpm --filter @attention-firewall/extension typecheck
+      - run: pnpm --filter @attention-firewall/extension build
+      - run: pnpm security:extension
+      - name: Package extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd apps/extension
+          zip -r ../../attention-firewall-extension.zip dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: attention-firewall-extension
+          path: attention-firewall-extension.zip
+          if-no-files-found: error
