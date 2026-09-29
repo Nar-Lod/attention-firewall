@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   preview:
-    if: \${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+    if: vars.VERCEL_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -26,21 +26,26 @@ jobs:
       - run: pnpm test
       - run: pnpm --filter @attention-firewall/web... build
       - run: npm install --global vercel@48.12.0
+      - run: test -n "$VERCEL_TOKEN" && test -n "$VERCEL_ORG_ID" && test -n "$VERCEL_PROJECT_ID"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       - run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
         env:
-          VERCEL_TOKEN: \${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: \${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: \${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       - id: deploy
         run: |
           URL="$(vercel deploy --token="$VERCEL_TOKEN")"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
         env:
-          VERCEL_TOKEN: \${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       - uses: actions/github-script@v8
         with:
           script: |
-            const url = '\${{ steps.deploy.outputs.url }}';
+            const url = '${{ steps.deploy.outputs.url }}';
             if (!url) core.setFailed('Vercel did not return a preview URL.');
             else await github.rest.issues.createComment({
               owner: context.repo.owner,
