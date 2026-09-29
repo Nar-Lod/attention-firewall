@@ -42,7 +42,7 @@ chrome.runtime.onMessage.addListener((message:unknown,sender)=>{
  }
  if(isInterventionResponse(message)){
   if(message.outcome==="exited")pendingRecovery.set(sender.tab.id,{startedAt:Date.now()});
-  void handleResponse(message.intervention,message.outcome);
+  void handleResponse(sender.tab.id,message.intervention,message.outcome);
   return;
  }
  if(isRecoveryCompleted(message)){
@@ -190,13 +190,13 @@ async function handleActivity(tabId:number,message:ActivitySample){
  }
 }
 
-async function handleResponse(intervention:string,outcome:"continued"|"exited"){
+async function handleResponse(tabId:number,intervention:string,outcome:"continued"|"exited"){
  const stored=await getLocalState();
  const profile=parseInterventionProfile(stored.interventionProfile);
  profile.attemptsByIntervention[intervention]=(profile.attemptsByIntervention[intervention]??0)+1;
  if(outcome==="exited")profile.successByIntervention[intervention]=(profile.successByIntervention[intervention]??0)+1;
 
- for(const state of runtimes.values())state.runtime.respond(intervention,outcome);
+ const state=runtimes.get(tabId); if(state)state.runtime.respond(intervention,outcome);
  let summary=stored.dailySummary as ReturnType<typeof emptyDay>|undefined;
  summary=summary&&summary.date===new Date().toISOString().slice(0,10)?summary:emptyDay();
  summary=recordInterventionOutcome(summary,outcome==="exited");
