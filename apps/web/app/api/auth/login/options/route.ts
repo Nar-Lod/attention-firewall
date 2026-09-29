@@ -1,6 +1,7 @@
 import {NextResponse} from "next/server";
 import {randomUUID} from "node:crypto";
-import {createAuthenticationOptions,createFlowCookie,PostgresAuthStore} from "@attention-firewall/api";
+import {createFlowCookie,PostgresAuthStore} from "@attention-firewall/api";
+import {createAuthenticationOptions} from "@attention-firewall/auth-core";
 
 export const runtime="nodejs";
 
@@ -15,7 +16,7 @@ export async function POST(){
  try{
   const result=await createAuthenticationOptions([],rpID);
   const txId=randomUUID();
-  await store.put("auth:"+txId,result.challenge,Date.now()+5*60_000);
+  await store.saveChallenge("auth:"+txId,result.challenge,Date.now()+5*60_000);
   const response=NextResponse.json({options:result.options});
   response.headers.append("Set-Cookie",createFlowCookie("af_auth",{txId},flowSecret));
   return response;
