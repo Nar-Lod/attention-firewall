@@ -127,6 +127,57 @@ export class PostgresAuthStore implements VaultRepository,ChallengeStore,Passkey
  async createAccount(accountId:string,authSubject:string){await this.pool.query("insert into accounts(id,auth_subject) values($1::uuid,$2)",[accountId,authSubject])}
  async createDevice(deviceId:string,accountId:string,platform:"web"|"android"|"ios"|"desktop",appVersion:string){await this.pool.query("insert into devices(id,account_id,platform,app_version) values($1::uuid,$2::uuid,$3,$4)",[deviceId,accountId,platform,appVersion])}
 
+ async registerAccount(input:{
+  accountId:string;
+  authSubject:string;
+  passkey:StoredPasskey;
+  deviceId:string;
+  platform:"web"|"android"|"ios"|"desktop";
+  appVersion:string;
+  session:SessionRecord;
+ }){
+  const client=await this.pool.connect();
+  try{
+   await client.query("begin");
+   await client.query("insert into accounts(id,auth_subject) values($1::uuid,$2)",[input.accountId,input.authSubject]);
+   await client.query(
+    "insert into passkeys(id,account_id,webauthn_user_id,public_key,counter,transports,device_type,backed_up) values($1,$2::uuid,$3,$4,$5,$6,$7,$8)",
+    [input.passkey.id,input.accountId,input.passkey.webauthnUserID,Buffer.from(input.passkey.publicKey),input.passkey.counter,JSON.stringify(input.passkey.transports??[]),input.passkey.deviceType,input.passkey.backedUp]
+   );
+   await client.query(
+    "insert into devices(id,account_id,platform,app_version) values($1::uuid,$2::uuid,$3,$4)",
+    [input.deviceId,input.accountId,input.platform,input.appVersion]
+   );
+   await client.query(
+    "insert into sessions(id,account_id,device_id,token_hash,created_at,expires_at,revoked_at) values($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7)",
+    [input.session.id,input.accountId,input.deviceId,input.session.tokenHash,new Date(input.session.createdAt),new Date(input.session.expiresAt),input.session.revokedAt?new Date(input.session.revokedAt):null]
+   );
+   await client.query("commit");
+  }catch(error){
+   await client.query("rollback").catch(()=>{});
+   throw error;
+  }finally{client.release();}
+ }
+
+ async createDeviceAndSession(input:{
+  deviceId:string;
+  accountId:string;
+  platform:"web"|"android"|"ios"|"desktop";
+  appVersion:string;
+  session:SessionRecord;
+ }){
+  const client=await this.pool.connect();
+  try{
+   await client.query("begin");
+   await client.query("insert into devices(id,account_id,platform,app_version) values($1::uuid,$2::uuid,$3,$4)",[input.deviceId,input.accountId,input.platform,input.appVersion]);
+   await client.query("insert into sessions(id,account_id,device_id,token_hash,created_at,expires_at,revoked_at) values($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7)",[input.session.id,input.accountId,input.deviceId,input.session.tokenHash,new Date(input.session.createdAt),new Date(input.session.expiresAt),input.session.revokedAt?new Date(input.session.revokedAt):null]);
+   await client.query("commit");
+  }catch(error){
+   await client.query("rollback").catch(()=>{});
+   throw error;
+  }finally{client.release();}
+ }
+
  private mapPasskey(row:any):StoredPasskey{
   let transports:AuthenticatorTransportFuture[]|undefined;
   try{
