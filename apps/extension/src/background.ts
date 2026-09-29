@@ -54,11 +54,12 @@ async function evaluate(tabId:number,session:Session){
  const lateNightRisk=hour>=22||hour<6?1:0;
  const total=Math.max(1,session.interactionCount+session.scrollCount);
  const interactionRate=Math.min(1,session.interactionCount/total);
+ const scrollEventsPerMinute=Math.min(120,(session.scrollCount/Math.max(1,(Date.now()-session.startedAt)/60000)));
 
  const assessment=assessAttention({
   sessionSeconds:(Date.now()-session.startedAt)/1000,
   repeatedOpens:session.recentReopens,recentReopens:session.recentReopens,
-  passiveSeconds:session.passiveSeconds,interactionRate,contextSwitches:0,
+  passiveSeconds:session.passiveSeconds,interactionRate,scrollEventsPerMinute,contextSwitches:0,
   declaredIntentMatch,outsideIntent,lateNightRisk,notificationLaunch:false,previousInterventionIgnored:false
  });
  const decision=chooseIntervention(assessment,{successByIntervention:profile.successByIntervention,attemptsByIntervention:profile.attemptsByIntervention},Date.now(),{strict});
