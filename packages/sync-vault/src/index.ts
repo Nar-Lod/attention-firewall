@@ -70,3 +70,96 @@ export function validateVaultEnvelope(value:unknown):VaultEnvelope{
   ciphertext:v.ciphertext
  };
 }
+
+
+export interface SyncableSettings{
+ version:1;
+ protectionMode:"adaptive"|"strict";
+ currentIntent?:{
+  id:string;
+  label:string;
+  purpose:string;
+  targetDomains:string[];
+  budgetMinutes?:number;
+ };
+ rules:Array<{
+  id:string;
+  target:string;
+  value:string;
+  enabled:boolean;
+  minimumIntervention:string;
+  startMinute?:number;
+  endMinute?:number;
+ }>;
+ commitments:Array<{
+  id:string;
+  label:string;
+  targetDomains:string[];
+  startAt:number;
+  endAt:number;
+  minimumIntervention:string;
+  changeCooldownMinutes:number;
+  createdAt:number;
+ }>;
+}
+
+export function buildSyncableSettings(state:unknown):SyncableSettings{
+ if(!state||typeof state!=="object")throw new Error("invalid local settings");
+ const value=state as Record<string,unknown>;
+
+ const intent=value.currentIntent;
+ const cleanIntent=intent&&typeof intent==="object"?sanitizeIntentForSync(intent):undefined;
+
+ const rules=Array.isArray(value.rules)?value.rules.map(sanitizeRuleForSync):[];
+ const commitments=Array.isArray(value.commitments)?value.commitments.map(sanitizeCommitmentForSync):[];
+
+ return {
+  version:1,
+  protectionMode:value.protectionMode==="strict"?"strict":"adaptive",
+  ...(cleanIntent?{currentIntent:cleanIntent}:{}),
+  rules:rules.filter(Boolean) as SyncableSettings["rules"],
+  commitments:commitments.filter(Boolean) as SyncableSettings["commitments"]
+ };
+}
+
+function sanitizeIntentForSync(value:unknown){
+ if(!value||typeof value!=="object")return undefined;
+ const v=value as Record<string,unknown>;
+ if(typeof v.id!=="string"||typeof v.label!=="string"||typeof v.purpose!=="string"||!Array.isArray(v.targetDomains))return undefined;
+ const targetDomains=v.targetDomains.filter(x=>typeof x==="string").slice(0,30) as string[];
+ if(targetDomains.length!==v.targetDomains.length)return undefined;
+ const out:{
+  id:string;label:string;purpose:string;targetDomains:string[];budgetMinutes?:number
+ }={id:v.id.slice(0,80),label:v.label.slice(0,120),purpose:v.purpose.slice(0,32),targetDomains};
+ if(typeof v.budgetMinutes==="number"&&Number.isInteger(v.budgetMinutes)&&v.budgetMinutes>=1&&v.budgetMinutes<=240)out.budgetMinutes=v.budgetMinutes;
+ return out;
+}
+
+function sanitizeRuleForSync(value:unknown){
+ if(!value||typeof value!=="object")return undefined;
+ const v=value as Record<string,unknown>;
+ if(typeof v.id!=="string"||typeof v.target!=="string"||typeof v.value!=="string"||typeof v.enabled!=="boolean"||typeof v.minimumIntervention!=="string")return undefined;
+ const out:{id:string;target:string;value:string;enabled:boolean;minimumIntervention:string;startMinute?:number;endMinute?:number}={
+  id:v.id.slice(0,80),target:v.target.slice(0,24),value:v.value.slice(0,253),enabled:v.enabled,minimumIntervention:v.minimumIntervention.slice(0,24)
+ };
+ if(typeof v.startMinute==="number"&&Number.isInteger(v.startMinute)&&v.startMinute>=0&&v.startMinute<1440)out.startMinute=v.startMinute;
+ if(typeof v.endMinute==="number"&&Number.isInteger(v.endMinute)&&v.endMinute>=0&&v.endMinute<1440)out.endMinute=v.endMinute;
+ return out;
+}
+
+function sanitizeCommitmentForSync(value:unknown){
+ if(!value||typeof value!=="object")return undefined;
+ const v=value as Record<string,unknown>;
+ if(typeof v.id!=="string"||typeof v.label!=="string"||!Array.isArray(v.targetDomains)||typeof v.startAt!=="number"||typeof v.endAt!=="number"||typeof v.minimumIntervention!=="string"||typeof v.changeCooldownMinutes!=="number"||typeof v.createdAt!=="number")return undefined;
+ if(v.targetDomains.some(x=>typeof x!=="string"))return undefined;
+ return {
+  id:v.id.slice(0,80),
+  label:v.label.slice(0,120),
+  targetDomains:(v.targetDomains as string[]).slice(0,30),
+  startAt:v.startAt,
+  endAt:v.endAt,
+  minimumIntervention:v.minimumIntervention.slice(0,24),
+  changeCooldownMinutes:Math.max(0,Math.min(1440,Math.floor(v.changeCooldownMinutes))),
+  createdAt:v.createdAt
+ };
+}
