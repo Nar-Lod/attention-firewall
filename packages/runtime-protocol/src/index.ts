@@ -38,6 +38,9 @@ export function validateRuntimeSample(value:unknown):RuntimeSample{
  requireBoundedInt(v.interactions,0,500,"interactions");
  requireBoundedInt(v.scrolls,0,500,"scrolls");
  requireBoundedFinite(v.elapsedSeconds,0,300,"elapsedSeconds");
+ if(v.scrollBursts!==undefined)requireBoundedInt(v.scrollBursts,0,50,"scrollBursts");
+ if(v.scrollDirectionChanges!==undefined)requireBoundedInt(v.scrollDirectionChanges,0,50,"scrollDirectionChanges");
+ if(v.scrollDistancePerMinute!==undefined)requireBoundedFinite(v.scrollDistancePerMinute,0,50000,"scrollDistancePerMinute");
  if(v.contextSwitches!==undefined)requireBoundedInt(v.contextSwitches,0,50,"contextSwitches");
  if(v.intentMatch!==undefined)requireBoundedFinite(v.intentMatch,0,1,"intentMatch");
  if(v.outsideIntent!==undefined&&typeof v.outsideIntent!=="boolean")throw new Error("invalid outsideIntent");
