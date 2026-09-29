@@ -51,6 +51,14 @@ function isInterventionMessage(value:unknown):value is {type:"ATTENTION_INTERVEN
 }
 
 function sendOutcome(intervention:Intervention,outcome:"continued"|"exited"){
+  chrome.runtime.sendMessage({type:"INTERVENTION_RESPONSE",intervention,outcome}).catch(()=>{});
+}
+
+function sendRecoveryCompleted(durationSeconds:number){
+  chrome.runtime.sendMessage({type:"RECOVERY_COMPLETED",durationSeconds}).catch(()=>{});
+}
+
+function sendOutcomeOld(intervention:Intervention,outcome:"continued"|"exited"){
  chrome.runtime.sendMessage({type:"INTERVENTION_RESPONSE",intervention,outcome}).catch(()=>{});
 }
 
