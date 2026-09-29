@@ -9,6 +9,7 @@ import {normalizeDomain} from "@attention-firewall/intent-engine";
 import type {InterventionProfile} from "@attention-firewall/attention-engine";
 import type {PolicyRule} from "@attention-firewall/policy-engine";
 import type {Commitment} from "@attention-firewall/commitment-engine";
+import type {SecurityEvent} from "@attention-firewall/security-audit";
 
 type Purpose="work"|"study"|"communication"|"entertainment"|"rest"|"other";
 type Mode="adaptive"|"strict";
@@ -36,6 +37,7 @@ const blankProfile:Profile={
  commitments:[],
  interventionProfile:{successByIntervention:{},attemptsByIntervention:{}},
  privacy:{telemetryOptIn:false,researchOptIn:false},
+ securityEvents:[],
  protectionMode:"adaptive"
 };
 
