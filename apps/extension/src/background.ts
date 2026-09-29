@@ -89,7 +89,7 @@ async function unregisterDetector(){
 
 async function handleActivity(tabId:number,message:ActivitySample){
  const state=runtimes.get(tabId);
- const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary"]);
+ const stored=await chrome.storage.local.get(["currentIntent","interventionProfile","protectionMode","dailySummary","dailyHistory"]);
  const intent=stored.currentIntent as LocalIntent|undefined;
  const profile=(stored.interventionProfile as LocalProfile|undefined)??{successByIntervention:{},attemptsByIntervention:{}};
  const protectionMode=stored.protectionMode==="strict"?"strict":"adaptive";
