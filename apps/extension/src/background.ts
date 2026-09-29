@@ -123,13 +123,6 @@ async function registerDetector(patterns:string[]){
  }]);
 }
 
-function hostPatterns(domains:string[]):string[]{
- return [...new Set(domains.flatMap(domain=>domain?[
-  "https://"+domain+"/*",
-  "https://*."+domain+"/*"
- ]:[]))].slice(0,60);
-}
-
 async function unregisterDetector(){
  await chrome.scripting.unregisterContentScripts({ids:[CONTENT_SCRIPT_ID]}).catch(()=>{});
 }
