@@ -1,71 +1,45 @@
 # Authentication architecture
 
-Attention Firewall uses passwordless authentication as the production target.
+Attention Firewall targets passkey-first authentication.
 
-## Passkeys
-
-The WebAuthn ceremony is:
-1. create registration options;
-2. authenticator creates credential;
-3. verify registration response;
-4. store credential public key + counter;
-5. create authentication options;
-6. authenticator signs assertion;
-7. verify assertion;
-8. update signature counter.
-
-The WebAuthn user ID is a random non-PII identifier and is distinct from the user's email/username.
-
-User verification is required for the production authentication flow.
-
-## Server-side storage
-
-A passkey record stores only:
-- credential ID;
-- public key;
-- WebAuthn user ID;
-- signature counter;
-- transport hints;
-- device-type/back-up status.
-
-Private key material never reaches the server.
+The current auth core uses SimpleWebAuthn 14.x. The documented flow is registration options → authenticator → verification, and authentication options → authenticator → verification. Credentials are stored as public-key material plus counters; private key material never reaches the server. citeturn126028search0
 
 ## Session security
 
-After successful WebAuthn verification:
-- issue a short-lived secure session;
-- use Secure + HttpOnly + SameSite cookie attributes;
-- rotate session identifiers after authentication;
-- revoke on logout/device revocation;
-- do not store session secrets in localStorage.
+After successful authentication:
+- issue an opaque random session token;
+- store only its SHA-256 hash server-side;
+- send the raw token only in a Secure, HttpOnly, SameSite=Strict cookie;
+- use short-lived sessions;
+- support explicit account/device/session revocation;
+- never store session tokens in localStorage.
 
-## Challenge lifecycle
+## Challenge security
 
-Registration and authentication challenges are short-lived and single-use.
+- challenges are short-lived;
+- challenge identifiers are single-purpose;
+- consumption must be atomic;
+- replayed or expired challenges are rejected;
+- failed verification never creates a session.
 
-Never reuse a challenge.
+## Device binding
+
+A session is associated with a random revocable device identifier. Device revocation terminates sessions for that device.
+
+## Behavioral-data boundary
+
+Authentication tables must not contain:
+- URLs;
+- page content;
+- attention scores;
+- session behavior timelines;
+- browsing history;
+- intervention history.
 
 ## Recovery
 
-Account recovery must not decrypt or expose local behavioral history. Recovery is an account/security process only.
+Account recovery restores access to the account only. It does not decrypt or retrieve local attention history.
 
-## Device security
+## Library versions
 
-Every registered device has a random revocable identifier. Device management is separate from behavioral data.
-
-## Library
-
-The current implementation targets SimpleWebAuthn server/browser 14.x APIs. The current server documentation recommends the two-step options/verification flow and a server-side credential record for subsequent assertions. citeturn126028search0turn223559search2
-
-## Production requirements
-
-- trusted origin and RP ID configuration;
-- HTTPS;
-- challenge store;
-- passkey store;
-- session store;
-- rate limits;
-- abuse protection;
-- MFA/security keys for administrators;
-- device revocation;
-- audit events without behavioral data.
+The current implementation targets SimpleWebAuthn server 14.0.3 and browser 14.0.0. citeturn615026search1turn615026search0
