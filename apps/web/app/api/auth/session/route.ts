@@ -13,11 +13,11 @@ export async function GET(request:Request){
    authenticated:true,
    accountId:context.accountId,
    deviceId:context.deviceId
-  });
+  },{headers:{"Cache-Control":"no-store"}});
  }catch(error){
   const message=error instanceof Error?error.message:"";
   if(message==="authentication required"){
-   return NextResponse.json({authenticated:false});
+   return NextResponse.json({authenticated:false,serviceConfigured:true},{headers:{"Cache-Control":"no-store"}});
   }
   return NextResponse.json({error:"session_unavailable"},{status:503});
  }finally{
