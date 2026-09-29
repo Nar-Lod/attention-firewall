@@ -1,4 +1,5 @@
 import {AttentionRuntime} from "@attention-firewall/attention-runtime";
+import {validateRuntimeSample} from "@attention-firewall/runtime-protocol";
 import {validateRules,type PolicyRule} from "@attention-firewall/policy-engine";
 import {DEFAULT_HISTORY,emptyDay,recordInterventionOutcome,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
@@ -197,12 +198,20 @@ function messageType(value:unknown):string{
 }
 
 function isActivityMessage(value:unknown):value is ActivitySample{
- if(!value||typeof value!=="object")return false;
- const v=value as Record<string,unknown>;
- return v.type==="ACTIVITY_SAMPLE"&&typeof v.domain==="string"&&v.domain.length>=1&&v.domain.length<=253&&
-  Number.isSafeInteger(v.scrollCount)&&v.scrollCount>=0&&v.scrollCount<=500&&
-  Number.isSafeInteger(v.interactionCount)&&v.interactionCount>=0&&v.interactionCount<=500&&
-  typeof v.elapsedSeconds==="number"&&Number.isFinite(v.elapsedSeconds)&&v.elapsedSeconds>=0&&v.elapsedSeconds<=300;
+ try{
+  if(!value||typeof value!=="object")return false;
+  const v=value as Record<string,unknown>;
+  if(v.type!=="ACTIVITY_SAMPLE")return false;
+  const sample=validateRuntimeSample({
+   protocolVersion:1,
+   platform:"web",
+   domain:v.domain,
+   elapsedSeconds:v.elapsedSeconds,
+   interactions:v.interactionCount,
+   scrolls:v.scrollCount
+  });
+  return sample.platform==="web"&&typeof sample.domain==="string";
+ }catch{return false}
 }
 
 function isInterventionResponse(value:unknown):value is {type:"INTERVENTION_RESPONSE";intervention:string;outcome:"continued"|"exited"}{
