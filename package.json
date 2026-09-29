@@ -1,1 +1,21 @@
-{"name":"attention-firewall","private":true,"version":"0.1.0","packageManager":"pnpm@12.7.0","engines":{"node":">=22 <23","pnpm":"12.7.0"},"scripts":{"build":"pnpm -r build","test":"pnpm -r test","lint":"pnpm -r lint","typecheck":"pnpm -r --filter \"!@attention-firewall/web\" build && pnpm -r typecheck","security:extension":"node scripts/check-extension-security.mjs","dev":"pnpm --filter @attention-firewall/web dev"},"devDependencies":{"typescript":"^5.8.3","vitest":"^3.2.4"}}
+{
+  "name": "attention-firewall",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.12.4",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r --filter "!@attention-firewall/web" build && pnpm -r typecheck",
+    "security:extension": "node scripts/check-extension-security.mjs",
+    "dev": "pnpm --filter @attention-firewall/web dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
