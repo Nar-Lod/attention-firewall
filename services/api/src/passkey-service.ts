@@ -75,7 +75,7 @@ export async function completeRegistration(
   publicKey:new Uint8Array(info.credential.publicKey),
   webauthnUserID:user.webauthnUserID,
   counter:info.credential.counter,
-  transports:info.credential.transports,
+  ...(info.credential.transports?.length?{transports:info.credential.transports}:{}),
   deviceType:info.credentialDeviceType,
   backedUp:info.credentialBackedUp
  };
