@@ -4,7 +4,7 @@ type StoredRecord={key:string;iv:ArrayBuffer;ciphertext:ArrayBuffer};
 type KeyRecord={id:string;key:CryptoKey};
 
 export class EncryptedIndexedDbStore<T> implements SecureStore<T>{
- private dbPromise?:Promise<IDBDatabase>;
+ private dbPromise:Promise<IDBDatabase>|undefined;
 
  constructor(private readonly keyId="attention-firewall-v1",private readonly dbName="attention-firewall-secure"){}
 
