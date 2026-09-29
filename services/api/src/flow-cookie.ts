@@ -56,6 +56,6 @@ export function readFlowCookie(
   if(typeof value.txId!=="string"||value.txId.length>80)return null;
   if(value.accountId!==undefined&&typeof value.accountId!=="string")return null;
   if(value.webauthnUserID!==undefined&&typeof value.webauthnUserID!=="string")return null;
-  return value as FlowCookiePayload;
+  return value as unknown as FlowCookiePayload;
  }catch{return null}
 }
