@@ -1,49 +1,71 @@
-# Authentication and account security
+# Authentication architecture
 
-Authentication is not required for local-only mode.
+Attention Firewall uses passwordless authentication as the production target.
 
-## Preferred production model
+## Passkeys
 
-Use phishing-resistant passkeys/WebAuthn where supported.
+The WebAuthn ceremony is:
+1. create registration options;
+2. authenticator creates credential;
+3. verify registration response;
+4. store credential public key + counter;
+5. create authentication options;
+6. authenticator signs assertion;
+7. verify assertion;
+8. update signature counter.
 
-Fallback account flows should use:
-- strong password hashing with a modern password-hashing function;
-- MFA;
-- rate limiting;
-- breached-password screening;
-- session rotation;
-- secure, HttpOnly, SameSite cookies;
-- CSRF protection;
-- device/session revocation.
+The WebAuthn user ID is a random non-PII identifier and is distinct from the user's email/username.
 
-## Session model
+User verification is required for the production authentication flow.
 
-Access sessions should be short-lived. Refresh credentials must be rotated and invalidated on reuse or explicit revocation.
+## Server-side storage
 
-Do not store long-lived auth tokens in localStorage.
+A passkey record stores only:
+- credential ID;
+- public key;
+- WebAuthn user ID;
+- signature counter;
+- transport hints;
+- device-type/back-up status.
 
-## Device model
+Private key material never reaches the server.
 
-Each registered device receives a random identifier unrelated to advertising identifiers.
+## Session security
 
-A user must be able to:
-- list devices;
-- revoke a device;
-- revoke all sessions;
-- reset local encryption/profile state.
+After successful WebAuthn verification:
+- issue a short-lived secure session;
+- use Secure + HttpOnly + SameSite cookie attributes;
+- rotate session identifiers after authentication;
+- revoke on logout/device revocation;
+- do not store session secrets in localStorage.
 
-The server must not require behavioral history to authenticate the user.
+## Challenge lifecycle
+
+Registration and authentication challenges are short-lived and single-use.
+
+Never reuse a challenge.
 
 ## Recovery
 
-Account recovery must not expose attention history. Password/passkey recovery and device recovery should be independently revocable.
+Account recovery must not decrypt or expose local behavioral history. Recovery is an account/security process only.
 
-## Administrative access
+## Device security
 
-Production admin access requires:
-- MFA/security keys;
-- least privilege;
-- separate admin identities;
-- just-in-time elevation where available;
-- audit logging;
-- no direct access to local behavioral data because it is not stored centrally.
+Every registered device has a random revocable identifier. Device management is separate from behavioral data.
+
+## Library
+
+The current implementation targets SimpleWebAuthn server/browser 14.x APIs. The current server documentation recommends the two-step options/verification flow and a server-side credential record for subsequent assertions. citeturn126028search0turn223559search2
+
+## Production requirements
+
+- trusted origin and RP ID configuration;
+- HTTPS;
+- challenge store;
+- passkey store;
+- session store;
+- rate limits;
+- abuse protection;
+- MFA/security keys for administrators;
+- device revocation;
+- audit events without behavioral data.
