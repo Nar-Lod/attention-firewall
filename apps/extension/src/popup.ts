@@ -1,17 +1,21 @@
-interface LocalIntent{label:string;targetDomains:string[];startedAt:number}
+interface LocalIntent{label:string;targetDomains:string[];startedAt:number;purpose?:"work"|"study"|"communication"|"entertainment"|"rest"|"other"}
 interface DailySummary{date:string;intentionalSeconds:number;passiveSeconds:number;driftEpisodes:number;interventionsShown:number;interventionsAccepted:number;attentionRecoveredSeconds:number}
-interface LocalSettings{protectionMode:"adaptive"|"strict";telemetryOptIn:false}
+interface LocalSettings{protectionMode:"adaptive"|"strict";webProtectionEnabled:boolean}
 
 const intentEl=document.getElementById("intent") as HTMLInputElement;
 const domainsEl=document.getElementById("domains") as HTMLInputElement;
 const modeEl=document.getElementById("mode") as HTMLSelectElement;
 const statusEl=document.getElementById("status") as HTMLDivElement;
+const webStatusEl=document.getElementById("webStatus") as HTMLDivElement;
+const enableWeb=document.getElementById("webProtection") as HTMLButtonElement;
+const disableWeb=document.getElementById("disableWebProtection") as HTMLButtonElement;
 
-chrome.storage.local.get(["currentIntent","protectionMode","dailySummary"]).then(result=>{
+chrome.storage.local.get(["currentIntent","protectionMode","dailySummary","webProtectionEnabled"]).then(result=>{
  const value=result.currentIntent as LocalIntent|undefined;
  if(value){intentEl.value=value.label;domainsEl.value=value.targetDomains.join(", ");}
  modeEl.value=(result.protectionMode as LocalSettings["protectionMode"]|undefined)??"adaptive";
  renderSummary(result.dailySummary as DailySummary|undefined);
+ renderWebStatus(Boolean(result.webProtectionEnabled));
 });
 
 document.getElementById("save")?.addEventListener("click",async()=>{
@@ -19,11 +23,40 @@ document.getElementById("save")?.addEventListener("click",async()=>{
  const targetDomains=domainsEl.value.split(",").map(v=>normalizeDomain(v)).filter(Boolean).slice(0,30);
  if(!label){statusEl.textContent="Add an intent first.";return;}
  await chrome.storage.local.set({
-  currentIntent:{label,targetDomains,startedAt:Date.now()},
+  currentIntent:{label,targetDomains,startedAt:Date.now(),purpose:"other"},
   protectionMode:modeEl.value==="strict"?"strict":"adaptive"
  });
- statusEl.textContent="Saved on this device. Telemetry remains off unless enabled separately.";
+ statusEl.textContent="Saved on this device. Telemetry remains off by default.";
 });
+
+enableWeb?.addEventListener("click",async()=>{
+ enableWeb.disabled=true;
+ const granted=await chrome.permissions.request({origins:["https://*/*"]});
+ if(granted){
+  await chrome.storage.local.set({webProtectionEnabled:true});
+  await chrome.runtime.sendMessage({type:"ENABLE_WEB_PROTECTION"});
+  renderWebStatus(true);
+  webStatusEl.textContent="Web Protection enabled. Website access was granted only after your action.";
+ }else{
+  renderWebStatus(false);
+  webStatusEl.textContent="Not enabled. No website access was granted.";
+ }
+ enableWeb.disabled=false;
+});
+
+disableWeb?.addEventListener("click",async()=>{
+ disableWeb.disabled=true;
+ await chrome.runtime.sendMessage({type:"DISABLE_WEB_PROTECTION"});
+ renderWebStatus(false);
+ webStatusEl.textContent="Web Protection disabled and website access can be removed.";
+ disableWeb.disabled=false;
+});
+
+function renderWebStatus(enabled:boolean){
+ enableWeb.style.display=enabled?"none":"block";
+ disableWeb.style.display=enabled?"block":"none";
+ webStatusEl.textContent=enabled?"Web Protection: ON":"Web Protection: OFF";
+}
 
 function renderSummary(summary:DailySummary|undefined){
  const passive=document.getElementById("passive");
