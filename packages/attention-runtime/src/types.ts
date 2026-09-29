@@ -23,7 +23,7 @@ export interface RuntimeSession{
  notificationLaunch:boolean;
  previousInterventionIgnored:boolean;
  lastInterventionAt?:number;
- state:"active"|"paused"|"completed";
+ state:"active"|"paused"|"recovering"|"completed";
 }
 
 export interface RuntimeConfig{
