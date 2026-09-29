@@ -17,7 +17,7 @@ export interface StoredPasskey {
  publicKey:Uint8Array;
  webauthnUserID:string;
  counter:number;
- transports?:AuthenticatorTransportFuture[];
+ transports?:string[];
  deviceType:"singleDevice"|"multiDevice";
  backedUp:boolean;
 }
