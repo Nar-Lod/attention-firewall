@@ -67,6 +67,14 @@ export class AttentionRuntime{
    outsideIntent:session.outsideIntent,lateNightRisk:session.lateNightRisk,
    notificationLaunch:session.notificationLaunch,previousInterventionIgnored:session.previousInterventionIgnored
   });
+  if(passiveLoop.detected){
+   assessment={
+    ...assessment,
+    score:Math.max(assessment.score,0.45),
+    state:assessment.score<0.45?"drifting":assessment.state,
+    reasons:[...new Set([...assessment.reasons,"passive scroll loop detected"])]
+   };
+  }
 
   const cooldownActive=session.lastInterventionAt!==undefined&&now-session.lastInterventionAt<60_000;
   const selected=chooseIntervention(assessment,this.config.profile,now,{strict:this.config.protectionMode==="strict"});
