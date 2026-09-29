@@ -108,7 +108,7 @@ export class AttentionRuntime{
   day=sample.interactions===0&&sample.scrolls>0
    ?addDailySeconds(day,"passiveSeconds",elapsed)
    :addDailySeconds(day,"intentionalSeconds",sample.outsideIntent?0:elapsed);
-  if(intervention!=="none"){day=recordDriftEpisode(day);day=recordInterventionShown(day);}
+  if(intervention!=="none"){day=recordDriftEpisode(day,currentHour);day=recordInterventionShown(day);}
   this.summary=day;
 
   const recovery=recommendRecovery({
