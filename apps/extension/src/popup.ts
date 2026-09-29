@@ -32,7 +32,6 @@ Promise.all([getLocalState(),chrome.storage.local.get("webProtectionEnabled")]).
 });
 
 document.getElementById("save")?.addEventListener("click",async()=>{
- const previous=await getLocalState();
  const label=intentEl.value.trim().slice(0,120);
  const targetDomains=domainsEl.value.split(",").map(v=>normalizeDomain(v)).filter(Boolean).slice(0,30);
  const purpose=normalizePurpose(purposeEl.value);
