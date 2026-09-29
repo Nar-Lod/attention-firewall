@@ -117,7 +117,7 @@ export class PostgresAuthStore implements VaultRepository,ChallengeStore,Passkey
   const result=await this.pool.query("select s.id::text,s.account_id::text,s.device_id::text,s.token_hash,extract(epoch from s.created_at)*1000 as created_at,extract(epoch from s.expires_at)*1000 as expires_at,extract(epoch from s.revoked_at)*1000 as revoked_at from sessions s join devices d on d.id=s.device_id join accounts a on a.id=s.account_id where s.token_hash=$1 and d.revoked_at is null and a.disabled_at is null",[tokenHash]);
   const row=result.rows[0];
   if(!row)return null;
-  return {id:row.id,accountId:row.account_id,deviceId:row.device_id,tokenHash:row.token_hash,createdAt:Number(row.created_at),expiresAt:Number(row.expires_at),revokedAt:row.revoked_at===null?undefined:Number(row.revoked_at)};
+  return {id:row.id,accountId:row.account_id,deviceId:row.device_id,tokenHash:row.token_hash,createdAt:Number(row.created_at),expiresAt:Number(row.expires_at),...(row.revoked_at===null?{}:{revokedAt:Number(row.revoked_at)})};
  }
 
  async revoke(sessionId:string){await this.pool.query("update sessions set revoked_at=now() where id=$1::uuid",[sessionId])}
