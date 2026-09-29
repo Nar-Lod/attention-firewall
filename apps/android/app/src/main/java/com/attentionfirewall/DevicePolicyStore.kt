@@ -8,6 +8,10 @@ data class DevicePolicy(
     val protectedPackages: Set<String> = emptySet()
 )
 
+object DevicePolicyGuard {
+    fun canEnable(policy: DevicePolicy): Boolean = policy.recoveryEnabled
+}
+
 class DevicePolicyStore(private val secureStore: SecureLocalStore) {
     private val key = "device_policy"
 
@@ -55,7 +59,7 @@ class DevicePolicyStore(private val secureStore: SecureLocalStore) {
 
     fun enableDeviceProtection(): DevicePolicy {
         val current = get()
-        require(current.recoveryEnabled) { "recovery must remain enabled" }
+        require(DevicePolicyGuard.canEnable(current)) { "recovery must remain enabled" }
         val next = current.copy(deviceProtectionEnabled = true)
         set(next)
         return next
