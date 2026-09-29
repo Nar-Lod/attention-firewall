@@ -5,7 +5,7 @@ import {emptyDay,addDailySeconds} from "@attention-firewall/local-analytics";
 function config(){
  return {
   protectionMode:"adaptive" as const,
-  profile:{successByIntervention:{},attemptsByIntervention:{}},
+  profile:{successByIntervention:{},attemptsByIntervention:{}},\n  rules:[],
   intent:{id:"1",label:"study",purpose:"study" as const,targetDomains:["example.com"],startedAt:0}
  };
 }
