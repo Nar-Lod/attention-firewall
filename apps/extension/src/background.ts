@@ -104,7 +104,8 @@ async function handleActivity(tabId:number,message:ActivitySample){
     label:intent.label,
     purpose:intent.purpose??"other",
     targetDomains:intent.targetDomains,
-    startedAt:intent.startedAt
+    startedAt:intent.startedAt,
+    budgetMinutes:intent.budgetMinutes
    }:undefined
   },undefined,typeof stored.dailySummary==="object"&&stored.dailySummary?stored.dailySummary:undefined)};
   runtimes.set(tabId,current);
@@ -123,17 +124,13 @@ async function handleActivity(tabId:number,message:ActivitySample){
   current.runtime.setSummary(stored.dailySummary);
  }
 
- const allowed=new Set((intent?.targetDomains??[]).map(v=>v.toLowerCase()));
- const outsideIntent=Boolean(intent&&allowed.size>0&&!allowed.has(message.domain.toLowerCase()));
- const intentMatch=!intent||allowed.size===0||allowed.has(message.domain.toLowerCase())?1:0;
  const hour=new Date().getHours();
 
  const result=current.runtime.sample({
   elapsedSeconds:message.elapsedSeconds,
   interactions:message.interactionCount,
   scrolls:message.scrollCount,
-  intentMatch,
-  outsideIntent,
+  domain:message.domain,
   lateNightRisk:hour>=22||hour<6?1:0
  });
 
