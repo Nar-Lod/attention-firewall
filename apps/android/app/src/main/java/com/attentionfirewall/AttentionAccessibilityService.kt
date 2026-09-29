@@ -84,8 +84,9 @@ class AttentionAccessibilityService : AccessibilityService() {
 
         val proposed = LocalAttentionEngine.intervention(assessment, hardLock)
         val minuteOfDay = hour * 60 + java.util.Calendar.getInstance().get(java.util.Calendar.MINUTE)
-        val intervention = LocalPolicyEngine.enforce(proposed, packageName, minuteOfDay, policyStore.getRules())
-        if (intervention != LocalLocalIntervention.NONE) {
+        val proposedLocal = LocalIntervention.valueOf(proposed.name)
+        val intervention = LocalPolicyEngine.enforce(proposedLocal, packageName, minuteOfDay, policyStore.getRules())
+        if (intervention != LocalIntervention.NONE) {
             showIntervention(intervention)
         }
     }
