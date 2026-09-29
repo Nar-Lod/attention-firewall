@@ -1,6 +1,6 @@
 import {AttentionRuntime} from "@attention-firewall/attention-runtime";
 import {validateRules,type PolicyRule} from "@attention-firewall/policy-engine";
-import {DEFAULT_HISTORY,emptyDay,recordIntervention,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
+import {DEFAULT_HISTORY,emptyDay,recordInterventionOutcome,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
 interface LocalIntent{label:string;targetDomains:string[];startedAt:number;purpose?:"work"|"study"|"communication"|"entertainment"|"rest"|"other";budgetMinutes?:number}
 interface LocalProfile{successByIntervention:Record<string,number>;attemptsByIntervention:Record<string,number>}
@@ -156,7 +156,7 @@ async function handleResponse(intervention:string,outcome:"continued"|"exited"){
  for(const state of runtimes.values())state.runtime.respond(intervention,outcome);
  let summary=stored.dailySummary as ReturnType<typeof emptyDay>|undefined;
  summary=summary&&summary.date===new Date().toISOString().slice(0,10)?summary:emptyDay();
- summary=recordIntervention(summary,outcome==="exited");
+ summary=recordInterventionOutcome(summary,outcome==="exited");
  const existingHistory=stored.dailyHistory as DailyHistory|undefined;
  const nextHistory=pruneHistory(upsertDay(existingHistory?.version===1?existingHistory:DEFAULT_HISTORY,summary),30);
  await chrome.storage.local.set({interventionProfile:profile,dailySummary:summary,dailyHistory:nextHistory});
