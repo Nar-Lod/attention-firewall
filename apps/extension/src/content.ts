@@ -165,10 +165,10 @@ function showIntervention(intervention:Intervention,recoveryMinutes:number){
    continueButton.disabled=remaining>0;
    continueButton.style.opacity=remaining>0?".55":"1";
    continueButton.style.cursor=remaining>0?"not-allowed":"pointer";
-   if(remaining<=0)window.clearInterval(timer);
+   if(remaining<=0){window.clearInterval(frictionTimer);frictionTimer=undefined;}
   },1000);
 
-  root.addEventListener("remove",()=>window.clearInterval(timer),{once:true});
+  
  }
 
  if(intervention==="commitment"){
