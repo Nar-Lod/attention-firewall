@@ -60,7 +60,7 @@ export async function completeRegistration(
  config:PasskeyConfig,
  now=Date.now()
 ):Promise<StoredPasskey>{
- const challenge=await challenges.take("reg:"+userId,now);
+ const challenge=await challenges.take("reg:"+user.id,now);
  if(!challenge)throw new Error("invalid or expired challenge");
 
  const verification=await verifyRegistration(response,challenge,config.origin,config.rpID);
@@ -72,14 +72,14 @@ export async function completeRegistration(
  const passkey:StoredPasskey={
   id:info.credential.id,
   publicKey:new Uint8Array(info.credential.publicKey),
-  webauthnUserID:info.credential.id,
+  webauthnUserID:user.webauthnUserID,
   counter:info.credential.counter,
   transports:info.credential.transports,
   deviceType:info.credentialDeviceType,
   backedUp:info.credentialBackedUp
  };
 
- await store.save(userId,passkey);
+ await store.save(user.id,passkey);
  return passkey;
 }
 
