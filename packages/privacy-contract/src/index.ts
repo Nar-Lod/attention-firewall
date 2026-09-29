@@ -37,8 +37,10 @@ export function validateTelemetry(input:unknown):CoarseTelemetry{
   if(value.durationBucket!==undefined&&(typeof value.durationBucket!=="string"||!durationBuckets.has(value.durationBucket)))throw new Error("invalid duration bucket");
 
   const clean:CoarseTelemetry={schemaVersion:1,kind,clientVersion,engineVersion,platform};
-  if(value.intervention!==undefined)clean.intervention=value.intervention as string;
-  if(value.outcome!==undefined)clean.outcome=value.outcome as CoarseTelemetry["outcome"];
-  if(value.durationBucket!==undefined)clean.durationBucket=value.durationBucket as CoarseTelemetry["durationBucket"];
+  const outcome=value.outcome;
+  const durationBucket=value.durationBucket;
+  if(typeof value.intervention==="string")clean.intervention=value.intervention;
+  if(typeof outcome==="string")clean.outcome=outcome as Exclude<CoarseTelemetry["outcome"],undefined>;
+  if(typeof durationBucket==="string")clean.durationBucket=durationBucket as Exclude<CoarseTelemetry["durationBucket"],undefined>;
   return clean;
 }
