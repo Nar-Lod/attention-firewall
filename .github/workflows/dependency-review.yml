@@ -1,4 +1,5 @@
 name: Dependency Review
+
 on:
   pull_request:
 
@@ -7,6 +8,7 @@ permissions:
 
 jobs:
   dependency-review:
+    if: vars.DEPENDENCY_REVIEW_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
