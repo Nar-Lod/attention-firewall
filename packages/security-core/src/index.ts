@@ -27,7 +27,7 @@ async function deriveKey(secret:string,salt:Uint8Array,iterations:number):Promis
   return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations,hash:"SHA-256"},material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
 }
 
-export async function encryptJson(value:unknown,secret:string,iterations=310000):Promise<EncryptedBlob>{
+export async function encryptJson(value:unknown,secret:string,iterations=600000):Promise<EncryptedBlob>{
   if(!secret) throw new Error("encryption secret required");
   const salt=crypto.getRandomValues(new Uint8Array(16));
   const iv=crypto.getRandomValues(new Uint8Array(12));
