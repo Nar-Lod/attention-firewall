@@ -117,7 +117,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
  current.runtime.setConfig({
   protectionMode,
   profile,
-  rules:Array.isArray(stored.rules)?stored.rules as never[]:[],
+  rules:safeRules(stored.rules),
   intent:intent as IntentEnvelope|undefined
  });
  if(typeof stored.dailySummary==="object"&&stored.dailySummary){
