@@ -1,7 +1,7 @@
 import {AttentionRuntime} from "@attention-firewall/attention-runtime";
 import {parseCommitments,parseInterventionProfile} from "@attention-firewall/local-store";
 import {sanitizeIntent,type IntentEnvelope} from "@attention-firewall/intent-engine";
-import {validateRuntimeSample} from "@attention-firewall/runtime-protocol";
+import {validateRuntimeInterventionResponse,validateRuntimeRecoveryCompleted,validateRuntimeSample,validateRuntimeSessionStart} from "@attention-firewall/runtime-protocol";
 import {buildAttentionTwin} from "@attention-firewall/personalization-engine";
 import {validateRules,type PolicyRule} from "@attention-firewall/policy-engine";
 import {appendSecurityEvent,clearLocalState,getLocalState,setLocalState} from "./local-state.js";
@@ -229,9 +229,18 @@ async function handleSessionStart(tabId:number,message:SessionStart){
 }
 
 function isSessionStart(value:unknown):value is SessionStart{
- if(!value||typeof value!=="object")return false;
- const v=value as Record<string,unknown>;
- return v.type==="SESSION_START"&&v.protocolVersion===1&&typeof v.domain==="string"&&v.domain.length>=1&&v.domain.length<=253;
+ try{
+  if(!value||typeof value!=="object")return false;
+  const v=value as Record<string,unknown>;
+  if(v.type!=="SESSION_START")return false;
+  validateRuntimeSessionStart({
+   protocolVersion:v.protocolVersion,
+   eventKind:"session-start",
+   platform:"web",
+   domain:v.domain
+  });
+  return true;
+ }catch{return false}
 }
 
 function safeRules(value:unknown):PolicyRule[]{try{return validateRules(value)}catch{return []}}
@@ -251,9 +260,16 @@ async function handleRecovery(tabId:number,durationSeconds:number){
 }
 
 function isRecoveryCompleted(value:unknown):value is {type:"RECOVERY_COMPLETED";durationSeconds:number}{
- if(!value||typeof value!=="object")return false;
- const v=value as Record<string,unknown>;
- return v.type==="RECOVERY_COMPLETED"&&typeof v.durationSeconds==="number"&&Number.isFinite(v.durationSeconds)&&v.durationSeconds>=120&&v.durationSeconds<=600;
+ try{
+  if(!value||typeof value!=="object")return false;
+  const v=value as Record<string,unknown>;
+  if(v.type!=="RECOVERY_COMPLETED")return false;
+  validateRuntimeRecoveryCompleted({
+   protocolVersion:1,eventKind:"recovery-completed",platform:"web",
+   durationSeconds:v.durationSeconds
+  });
+  return true;
+ }catch{return false}
 }
 
 function messageType(value:unknown):string{
@@ -269,6 +285,7 @@ function isActivityMessage(value:unknown):value is ActivitySample{
   if(v.type!=="ACTIVITY_SAMPLE")return false;
   const sample=validateRuntimeSample({
    protocolVersion:1,
+   eventKind:"sample",
    platform:"web",
    domain:v.domain,
    elapsedSeconds:v.elapsedSeconds,
@@ -283,7 +300,14 @@ function isActivityMessage(value:unknown):value is ActivitySample{
 }
 
 function isInterventionResponse(value:unknown):value is {type:"INTERVENTION_RESPONSE";intervention:string;outcome:"continued"|"exited"}{
- if(!value||typeof value!=="object")return false;
- const v=value as Record<string,unknown>;
- return v.type==="INTERVENTION_RESPONSE"&&typeof v.intervention==="string"&&v.intervention.length<=32&&(v.outcome==="continued"||v.outcome==="exited");
+ try{
+  if(!value||typeof value!=="object")return false;
+  const v=value as Record<string,unknown>;
+  if(v.type!=="INTERVENTION_RESPONSE")return false;
+  validateRuntimeInterventionResponse({
+   protocolVersion:1,eventKind:"intervention-response",platform:"web",
+   intervention:v.intervention,outcome:v.outcome
+  });
+  return true;
+ }catch{return false}
 }
