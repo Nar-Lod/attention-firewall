@@ -188,7 +188,7 @@ export class PostgresAuthStore implements VaultRepository,ChallengeStore,Passkey
    publicKey:new Uint8Array(row.public_key),
    webauthnUserID:String(row.webauthn_user_id),
    counter:Number(row.counter),
-   transports,
+   ...(transports?.length?{transports}:{}),
    deviceType:String(row.device_type) as StoredPasskey["deviceType"],
    backedUp:Boolean(row.backed_up)
   };
