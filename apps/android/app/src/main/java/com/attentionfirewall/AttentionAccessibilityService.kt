@@ -21,6 +21,7 @@ class AttentionAccessibilityService : AccessibilityService() {
 
     private val protectedApps by lazy { ProtectedAppStore(this) }
     private val secureStore by lazy { SecureLocalStore(this) }
+    private val policyStore by lazy { LocalPolicyStore(secureStore) }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
@@ -81,7 +82,9 @@ class AttentionAccessibilityService : AccessibilityService() {
             )
         )
 
-        val intervention = LocalAttentionEngine.intervention(assessment, hardLock)
+        val proposed = LocalAttentionEngine.intervention(assessment, hardLock)
+        val minuteOfDay = hour * 60 + java.util.Calendar.getInstance().get(java.util.Calendar.MINUTE)
+        val intervention = LocalPolicyEngine.enforce(proposed, packageName, minuteOfDay, policyStore.getRules())
         if (intervention != Intervention.NONE) {
             showIntervention(intervention)
         }
