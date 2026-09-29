@@ -60,3 +60,13 @@ function readCounts(value:unknown):Record<string,number>{
  }
  return out;
 }
+
+
+export function parseCommitments(value:unknown):import("@attention-firewall/commitment-engine").Commitment[]{
+ if(!Array.isArray(value))return [];
+ const out=[];
+ for(const item of value.slice(0,50)){
+  try{out.push(validateCommitment(item));}catch{}
+ }
+ return out;
+}
