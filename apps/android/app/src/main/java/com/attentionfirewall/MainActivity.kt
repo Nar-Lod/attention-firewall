@@ -10,7 +10,7 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
+import android.app.AlertDialog
 
 class MainActivity : Activity() {
     private lateinit var status: TextView
