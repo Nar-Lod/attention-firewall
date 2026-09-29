@@ -119,3 +119,35 @@ document.getElementById("saveRule")?.addEventListener("click",async()=>{
  ruleDomainEl.value="";
  statusEl.textContent="Site rule saved on this device.";
 });
+
+const commitDomainEl=document.getElementById("commitDomain") as HTMLInputElement;
+const commitMinutesEl=document.getElementById("commitMinutes") as HTMLInputElement;
+const commitLevelEl=document.getElementById("commitLevel") as HTMLSelectElement;
+
+document.getElementById("saveCommitment")?.addEventListener("click",async()=>{
+ const target=normalizeDomain(commitDomainEl.value);
+ const minutes=Number(commitMinutesEl.value);
+ const level=commitLevelEl.value;
+ const levels=["pause","delay","commitment","lock"];
+ if(!target||!Number.isInteger(minutes)||minutes<1||minutes>240||!levels.includes(level)){
+  statusEl.textContent="Enter a valid site, duration and commitment level.";
+  return;
+ }
+ const stored=await chrome.storage.local.get("commitments");
+ const commitments=Array.isArray(stored.commitments)?stored.commitments:[];
+ const now=Date.now();
+ const commitment={
+  id:"commit_"+crypto.randomUUID(),
+  label:"Protect "+target,
+  targetDomains:[target],
+  startAt:now,
+  endAt:now+minutes*60_000,
+  minimumIntervention:level,
+  changeCooldownMinutes:Math.min(60,minutes),
+  createdAt:now
+ };
+ await chrome.storage.local.set({commitments:[...commitments,commitment].slice(-50)});
+ commitDomainEl.value="";
+ commitMinutesEl.value="";
+ statusEl.textContent="Commitment started on this device.";
+});
