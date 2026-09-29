@@ -1,4 +1,5 @@
 import {AttentionRuntime} from "@attention-firewall/attention-runtime";
+import type {PolicyRule} from "@attention-firewall/policy-engine";
 import {DEFAULT_HISTORY,emptyDay,recordIntervention,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
 interface LocalIntent{label:string;targetDomains:string[];startedAt:number;purpose?:"work"|"study"|"communication"|"entertainment"|"rest"|"other";budgetMinutes?:number}
@@ -99,7 +100,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
   current={domain:message.domain,lastInterventionAt:0,runtime:new AttentionRuntime({
    protectionMode,
    profile,
-   rules:Array.isArray(stored.rules)?stored.rules as never[]:[],
+   rules:Array.isArray(stored.rules)?stored.rules as PolicyRule[]:[],
    intent:intent?{
     id:intent.startedAt.toString(36),
     label:intent.label,
