@@ -2,59 +2,48 @@
 
 Settings sync is optional and off by default.
 
-## What can sync
+The client encrypts settings before upload. The server stores only the opaque encrypted envelope.
 
-Only encrypted configuration:
-- protection rules;
-- commitments;
-- intent templates;
-- intervention preferences;
-- non-behavioral application settings.
+## Syncable settings
 
-## What must never sync through the vault
+Allowed:
+- protection mode;
+- explicit site/application rules;
+- user commitments;
+- current intent/template information;
+- non-behavioral application preferences.
 
-- browsing history;
+Excluded:
+- daily behavioral history;
+- attention scores;
+- learned intervention profile;
+- security-event history;
 - raw URLs;
 - page contents;
 - screenshots;
 - raw activity events;
-- daily behavioral history;
-- attention scores;
-- intervention timeline;
-- security-event history.
+- notification content.
 
-## Cryptographic model
+The allowlist is implemented in the sync-vault package and is tested.
 
-The client encrypts configuration before upload using AES-GCM with a passphrase-derived key.
+## Transport
 
-The passphrase is never transmitted.
+The browser sync client uses credentials: include for the authenticated session cookie and sends only the encrypted envelope.
 
-The server stores only:
-- version;
-- algorithm metadata;
-- KDF metadata;
-- salt;
-- IV;
-- ciphertext.
+The server validates envelope shape and version but does not decrypt it.
 
-The server does not decrypt or index the plaintext.
+## Failure behavior
 
-## Recovery trade-off
+- missing authentication: reject;
+- payload too large: reject;
+- invalid envelope: reject;
+- persistence unavailable: return service-not-configured;
+- version conflict: reject rather than overwrite silently.
 
-A lost sync passphrase means the server cannot recover the vault contents. This is intentional.
+## Security
 
-## Production requirements
+The sync passphrase is never transmitted.
 
-Before enabling server sync:
-- authenticated account/device session;
-- rate limiting;
-- maximum envelope size;
-- optimistic concurrency/versioning;
-- server-side envelope validation;
-- encrypted database/storage;
-- deletion endpoint;
-- audit events without behavioral metadata;
-- breach-response procedure;
-- subprocessor assessment;
-- privacy notice update;
-- DPIA review if the final processing operation triggers one.
+A lost passphrase means the server cannot recover the configuration. This is intentional.
+
+Never silently expand the sync allowlist. A new field requires privacy/security review.
