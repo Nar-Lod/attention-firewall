@@ -202,7 +202,7 @@ export default function Home(){
    <div>
     <p className="eyebrow">YOUR ATTENTION</p>
     <h1>Protect your intention.<br/><em>Not just your time.</em></h1>
-    <p className="sub">Detailed attention state is processed locally. The cloud is not required for the protection loop.</p>
+    <p className="sub">Detailed attention state is processed locally. The cloud is not required for the protection loop.</p><div className="hero-badges"><span>LOCAL ENGINE</span><span>ENCRYPTED LOCAL STATE</span><span>NO BEHAVIORAL CLOUD LOG</span></div>
    </div>
    <div className="score"><span>DRIFT SCORE</span><b>{driftRisk}</b><small>{assessment?.state??"waiting"}</small></div>
   </section>
@@ -228,13 +228,13 @@ export default function Home(){
     <p>{assessment?.reasons.length?assessment.reasons.join(" · "):"No intervention is active."}</p>
     <button onClick={()=>sample(false)}>Simulate intentional minute</button>
     <button onClick={()=>sample(true)} style={{marginLeft:8}}>Simulate passive scroll</button>
-    {decision!=="none"&&<div style={{marginTop:16}}><button onClick={()=>respond("exited")}>Exit & record</button><button onClick={()=>respond("continued")} style={{marginLeft:8}}>Continue intentionally</button></div>}
+    {decision!=="none"&&<div style={{marginTop:16}}><button onClick={()=>respond("exited")}>Exit & recover</button><button onClick={()=>respond("continued")} className="secondary-button">Continue intentionally</button></div>}
    </article>
 
    <article className="card">
     <div className="label">ATTENTION TWIN</div>
     <h2>{twin.preferredIntervention}</h2>
-    <p>{twin.sampleDays} local days · {twin.highRiskHours.length?twin.highRiskHours.map(h=>String(h).padStart(2,"0")+":00").join(", "):"high-risk windows not learned yet"}</p>
+    <p>{twin.sampleDays} local day(s) modeled · {twin.highRiskHours.length?twin.highRiskHours.map(h=>String(h).padStart(2,"0")+":00").join(", "):"high-risk windows not learned yet"}</p><div className="metric-row"><span>Consistency</span><b>{Math.round(twin.consistency*100)}%</b></div>
     <p>{recoveredMinutes} min attention recovered</p><p>{profile.commitments.filter(x=>x.endAt>Date.now()).length} active local commitments</p>
    </article>
 
@@ -253,11 +253,11 @@ export default function Home(){
     <div className="label">RECOVERY</div>
     <h2>{recovery ? "Use the next " + recovery + " minutes deliberately." : "Recovery appears after an intervention."}</h2>
     <p>Leaving the loop is only half the job. Attention Firewall helps convert recovered time into a concrete next action.</p>
-    <a href="/privacy">Open Privacy Center</a>
+    <div className="recovery-actions"><a href="/insights">Open local insights</a><a href="/privacy">Review privacy controls</a></div>
    </article>
   </section>
 
-  {status&&<p className="sub">{status}</p>}
+  {status&&<p className="status-line" role="status">{status}</p>}
   <footer><span>Detailed behavioral state stays on this device.</span><a href="/privacy">Privacy Center →</a></footer>
  </main>;
 }
