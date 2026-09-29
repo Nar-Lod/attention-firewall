@@ -21,7 +21,8 @@ class AttentionAccessibilityService : AccessibilityService() {
         if (packageName == this.packageName) return
 
         if (protectedApps.getPackages().contains(packageName)) {
-            showIntervention()
+            val hardLock = SecureLocalStore(this).get("hard_lock") == "1"
+            showIntervention(hardLock)
         } else {
             removeIntervention()
         }
@@ -31,7 +32,7 @@ class AttentionAccessibilityService : AccessibilityService() {
         removeIntervention()
     }
 
-    private fun showIntervention() {
+    private fun showIntervention(hardLock: Boolean) {
         if (overlay != null) return
 
         val root = LinearLayout(this).apply {
@@ -66,7 +67,7 @@ class AttentionAccessibilityService : AccessibilityService() {
         root.addView(title)
         root.addView(body)
         root.addView(leave)
-        root.addView(continueButton)
+        if (!hardLock) root.addView(continueButton)
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
