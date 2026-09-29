@@ -283,7 +283,7 @@ export class AttentionRuntime {
     const key=normalizeIntervention(intervention);
     if(!key)return;
     this.config.profile.attemptsByIntervention[key]=
-      (this.config.profile.attemptsByIntervention[intervention]??0)+1;
+      (this.config.profile.attemptsByIntervention[key]??0)+1;
 
     if(outcome==="exited"){
       this.config.profile.successByIntervention[key]=
