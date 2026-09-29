@@ -166,7 +166,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
 
  const existingHistory=stored.dailyHistory;
  const nextHistory=pruneHistory(upsertDay(existingHistory?.version===1?existingHistory:DEFAULT_HISTORY,result.dailySummary),30);
- await chrome.storage.local.set({dailySummary:result.dailySummary,dailyHistory:nextHistory});
+ await setLocalState({dailySummary:result.dailySummary,dailyHistory:nextHistory});
 
  if(result.intervention!=="none"&&Date.now()-current.lastInterventionAt>=60_000){
   current.lastInterventionAt=Date.now();
@@ -224,11 +224,11 @@ async function handleRecovery(tabId:number,durationSeconds:number){
  const pending=pendingRecovery.get(tabId);
  if(!pending||Date.now()-pending.startedAt>60_000){pendingRecovery.delete(tabId);return;}
  const bounded=Math.max(120,Math.min(durationSeconds,600));
- const stored=await chrome.storage.local.get(["dailySummary","dailyHistory"]);
+ const stored=await getLocalState();
  let summary=stored.dailySummary as ReturnType<typeof emptyDay>|undefined;
  summary=summary&&summary.date===new Date().toISOString().slice(0,10)?summary:emptyDay();
  summary=addDailySeconds(summary,"attentionRecoveredSeconds",bounded);
- const existingHistory=stored.dailyHistory as DailyHistory|undefined;
+ const existingHistory=stored.dailyHistory;
  const nextHistory=pruneHistory(upsertDay(existingHistory?.version===1?existingHistory:DEFAULT_HISTORY,summary),30);
  pendingRecovery.delete(tabId);
  await setLocalState({dailySummary:summary,dailyHistory:nextHistory});
