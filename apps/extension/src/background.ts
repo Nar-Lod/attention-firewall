@@ -1,7 +1,7 @@
 import {AttentionRuntime} from "@attention-firewall/attention-runtime";
 import {DEFAULT_HISTORY,emptyDay,recordIntervention,pruneHistory,upsertDay,type DailyHistory} from "@attention-firewall/local-analytics";
 
-interface LocalIntent{label:string;targetDomains:string[];startedAt:number;purpose?:"work"|"study"|"communication"|"entertainment"|"rest"|"other"}
+interface LocalIntent{label:string;targetDomains:string[];startedAt:number;purpose?:"work"|"study"|"communication"|"entertainment"|"rest"|"other";budgetMinutes?:number}
 interface LocalProfile{successByIntervention:Record<string,number>;attemptsByIntervention:Record<string,number>}
 interface ActivitySample{type:"ACTIVITY_SAMPLE";scrollCount:number;interactionCount:number;elapsedSeconds:number;domain:string}
 interface SessionRuntimeState{domain:string;runtime:AttentionRuntime;lastInterventionAt:number}
@@ -116,7 +116,7 @@ async function handleActivity(tabId:number,message:ActivitySample){
   profile,
   intent:intent?{
    id:intent.startedAt.toString(36),label:intent.label,purpose:intent.purpose??"other",
-   targetDomains:intent.targetDomains,startedAt:intent.startedAt
+   targetDomains:intent.targetDomains,startedAt:intent.startedAt,budgetMinutes:intent.budgetMinutes
   }:undefined
  });
  if(typeof stored.dailySummary==="object"&&stored.dailySummary){
