@@ -279,18 +279,18 @@ export class AttentionRuntime {
     };
   }
 
-  respond(intervention:string,outcome:"continued"|"exited"){
+  respond(intervention:string,outcome:"continued"|"exited"|"redirected"){
     const key=normalizeIntervention(intervention);
     if(!key)return;
     this.config.profile.attemptsByIntervention[key]=
       (this.config.profile.attemptsByIntervention[key]??0)+1;
 
-    if(outcome==="exited"){
+    if(outcome==="exited"||outcome==="redirected"){
       this.config.profile.successByIntervention[key]=
         (this.config.profile.successByIntervention[key]??0)+1;
     }
 
-    this.summary=recordInterventionOutcome(this.summary,outcome==="exited");
+    this.summary=recordInterventionOutcome(this.summary,outcome==="exited"||outcome==="redirected");
 
     if(this.session){
       this.session.previousInterventionIgnored=outcome==="continued";
