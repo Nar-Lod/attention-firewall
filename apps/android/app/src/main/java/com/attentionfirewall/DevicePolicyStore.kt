@@ -1,11 +1,14 @@
 package com.attentionfirewall
 
+enum class ProtectionMode { STANDARD, FOCUS, DEEP_FOCUS, RECOVERY }
+
 data class DevicePolicy(
     val version: Int = 1,
     val launcherPrepared: Boolean = false,
     val deviceProtectionEnabled: Boolean = false,
     val recoveryEnabled: Boolean = true,
-    val protectedPackages: Set<String> = emptySet()
+    val protectedPackages: Set<String> = emptySet(),
+    val protectionMode: ProtectionMode = ProtectionMode.STANDARD
 )
 
 object DevicePolicyGuard {
@@ -33,7 +36,8 @@ class DevicePolicyStore(private val secureStore: SecureLocalStore) {
                 launcherPrepared = objectValue.optBoolean("launcherPrepared", false),
                 deviceProtectionEnabled = objectValue.optBoolean("deviceProtectionEnabled", false),
                 recoveryEnabled = objectValue.optBoolean("recoveryEnabled", true),
-                protectedPackages = selected.take(100).toSet()
+                protectedPackages = selected.take(100).toSet(),
+                protectionMode = runCatching { ProtectionMode.valueOf(objectValue.optString("protectionMode", ProtectionMode.STANDARD.name)) }.getOrDefault(ProtectionMode.STANDARD)
             )
         }.getOrDefault(DevicePolicy())
     }
@@ -48,6 +52,7 @@ class DevicePolicyStore(private val secureStore: SecureLocalStore) {
             .put("deviceProtectionEnabled", policy.deviceProtectionEnabled)
             .put("recoveryEnabled", policy.recoveryEnabled)
             .put("protectedPackages", packages)
+            .put("protectionMode", policy.protectionMode.name)
         secureStore.put(key, objectValue.toString())
     }
 
