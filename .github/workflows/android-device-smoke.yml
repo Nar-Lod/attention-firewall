@@ -37,6 +37,12 @@ jobs:
           profile: pixel_2
           script: |
             adb install -r apps/android/app/build/outputs/apk/debug/app-debug.apk
+            adb shell pm list packages | grep -q 'com.attentionfirewall'
             adb shell am start -n com.attentionfirewall/.MainActivity
             adb shell dumpsys activity activities | grep -q 'com.attentionfirewall/.MainActivity'
-            adb shell pm list packages | grep -q 'com.attentionfirewall'
+            adb shell settings put secure enabled_accessibility_services com.attentionfirewall/com.attentionfirewall.AttentionAccessibilityService
+            adb shell settings put secure accessibility_enabled 1
+            adb shell am force-stop com.attentionfirewall
+            adb shell am start -n com.attentionfirewall/.MainActivity
+            adb shell dumpsys accessibility | grep -q 'com.attentionfirewall/com.attentionfirewall.AttentionAccessibilityService'
+            adb shell dumpsys package com.attentionfirewall | grep -q 'AttentionAccessibilityService'
