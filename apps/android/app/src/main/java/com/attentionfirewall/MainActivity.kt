@@ -9,6 +9,8 @@ import android.provider.Settings
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.LinearLayout
+import android.widget.RadioGroup
+import android.widget.EditText
 import android.widget.TextView
 import android.app.AlertDialog
 
@@ -34,6 +36,27 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.prepareLauncher).setOnClickListener {
             devicePolicy.prepareLauncher()
             status.text = "Launcher mode prepared locally. Android Home role has not been requested."
+        }
+
+        val modeGroup = findViewById<RadioGroup>(R.id.protectionMode)
+        val nextTaskCue = findViewById<EditText>(R.id.nextTaskCue)
+        when (devicePolicy.getProtectionMode()) {
+            ProtectionMode.STANDARD -> findViewById<android.widget.RadioButton>(R.id.modeStandard).isChecked = true
+            ProtectionMode.FOCUS -> findViewById<android.widget.RadioButton>(R.id.modeFocus).isChecked = true
+            ProtectionMode.DEEP_FOCUS -> findViewById<android.widget.RadioButton>(R.id.modeDeepFocus).isChecked = true
+            ProtectionMode.RECOVERY -> findViewById<android.widget.RadioButton>(R.id.modeRecovery).isChecked = true
+        }
+        nextTaskCue.setText(secureStore.get("next_task_cue") ?: "")
+        findViewById<Button>(R.id.saveRedirection).setOnClickListener {
+            val mode = when (modeGroup.checkedRadioButtonId) {
+                R.id.modeFocus -> ProtectionMode.FOCUS
+                R.id.modeDeepFocus -> ProtectionMode.DEEP_FOCUS
+                R.id.modeRecovery -> ProtectionMode.RECOVERY
+                else -> ProtectionMode.STANDARD
+            }
+            devicePolicy.setProtectionMode(mode)
+            secureStore.put("next_task_cue", nextTaskCue.text.toString().trim().take(200))
+            status.text = "Redirection preferences saved locally."
         }
 
         findViewById<Button>(R.id.hardProtection).setOnClickListener {
