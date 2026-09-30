@@ -21,6 +21,7 @@ type LocalIntent={
  startedAt:number;
  budgetMinutes?:number;
 };
+type RedirectDestination="notes"|"tasks"|"calendar"|"current-task";
 type Profile={
  version:1;
  protectionMode:Mode;
@@ -29,6 +30,7 @@ type Profile={
  commitments:Commitment[];
  interventionProfile:InterventionProfile;
  privacy:{telemetryOptIn:boolean;researchOptIn:boolean};
+ redirectShelf:RedirectDestination[];
  securityEvents:SecurityEvent[];
 };
 
@@ -38,6 +40,7 @@ const blankProfile:Profile={
  commitments:[],
  interventionProfile:{successByIntervention:{},attemptsByIntervention:{}},
  privacy:{telemetryOptIn:false,researchOptIn:false},
+ redirectShelf:["tasks","notes","calendar","current-task"],
  securityEvents:[],
  protectionMode:"adaptive"
 };
@@ -56,6 +59,7 @@ export default function Home(){
  const [commitDomain,setCommitDomain]=useState("");
  const [commitMinutes,setCommitMinutes]=useState("30");
  const [commitLevel,setCommitLevel]=useState<Commitment["minimumIntervention"]>("commitment");
+ const [redirectShelf,setRedirectShelf]=useState<RedirectDestination[]>(blankProfile.redirectShelf);
  const [runtime,setRuntime]=useState<AttentionRuntime|null>(null);
  const [summary,setSummary]=useState(emptyDay());
  const [history,setHistory]=useState<DailyHistory>({version:1,days:[]});
@@ -81,6 +85,7 @@ export default function Home(){
     setBudget(stored.intent.budgetMinutes?String(stored.intent.budgetMinutes):"");
    }
    setMode(stored.protectionMode);
+   setRedirectShelf(stored.redirectShelf??blankProfile.redirectShelf);
    setHistory(savedHistory);
    setSummary(savedHistory.days[0]??emptyDay());
    setLoaded(true);
@@ -235,6 +240,25 @@ export default function Home(){
     <button onClick={startCommitment}>Start commitment</button>
    </article>
 
+   <article className="card">
+    <div className="label">YOUR INTENTIONAL APPS · LOCAL</div>
+    <h2>Make the next action easier.</h2>
+    <p>Choose the destinations the Firewall may offer when it redirects a distraction. This preference stays on this device.</p>
+    <div className="preset-row">
+      {([["tasks","To-Do List"],["notes","Notes"],["calendar","Calendar"],["current-task","Current task"]] as const).map(([key,label])=>{
+        const checked=redirectShelf.includes(key);
+        return <button key={key} type="button" className="preset-button" aria-pressed={checked} onClick={()=>{
+          const next=checked?redirectShelf.filter(x=>x!==key):[...redirectShelf,key];
+          if(next.length===0)return;
+          setRedirectShelf(next);
+          const nextProfile={...profile,redirectShelf:next};
+          setProfile(nextProfile);
+          void profileStore.set(nextProfile);
+        }}>{checked?"✓ ":""}{label}</button>;
+      })}
+    </div>
+    <p className="preview-note">On Android, available installed destinations are offered locally. The web control plane does not receive your app activity.</p>
+   </article>
    <article className="card recovery">
     <div className="label">RECOVERY</div>
     <h2>{recoveredMinutes ? "Use recovered attention deliberately." : "Recovery appears after a local intervention."}</h2>
