@@ -41,7 +41,7 @@ sealed interface LocalRuntimeEvent {
         override val protocolVersion: Int = 1
     }
 
-    enum class Outcome { CONTINUED, EXITED }
+    enum class Outcome { CONTINUED, EXITED, REDIRECTED }
 }
 
 object LocalRuntimeEventValidator {
