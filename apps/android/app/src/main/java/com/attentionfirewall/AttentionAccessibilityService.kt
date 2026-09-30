@@ -172,7 +172,7 @@ class AttentionAccessibilityService : AccessibilityService() {
         val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(48,44,48,44);setBackgroundColor(Color.rgb(16,16,16))}
         root.addView(TextView(this).apply{text="Start the day intentionally";textSize=23f;setTextColor(Color.WHITE)})
         root.addView(TextView(this).apply{text="Set at least one target. It stays encrypted on this device and becomes your recovery path if attention drifts.";textSize=14f;setTextColor(Color.LTGRAY);setPadding(0,16,0,12)})
-        val inputs=(1..5).map{EditText(this).apply{hint="Target $it";setTextColor(Color.WHITE);setTextColorHint(Color.GRAY)}}; inputs.forEach{root.addView(it)}
+        val inputs=(1..5).map{EditText(this).apply{hint="Target $it";setTextColor(Color.WHITE);setHintTextColor(Color.GRAY)}}; inputs.forEach{root.addView(it)}
         root.addView(Button(this).apply{text="Set today's targets";setOnClickListener{runCatching{dailyTargets.setToday(inputs.map{it.text.toString()})}.onSuccess{removeIntervention()}}})
         attachOverlay(root)
     }
@@ -256,7 +256,7 @@ class AttentionAccessibilityService : AccessibilityService() {
             })
             suggestions.forEach { suggestion ->
                 root.addView(Button(this).apply {
-                    text = suggestion.destination.label + " · " + suggestion.cue
+                    text = suggestion.destination.label + " · " + suggestion.destination.cue
                     setOnClickListener {
                         recordRuntimeEvent(LocalRuntimeEvent.InterventionResponse("android", intervention.name.lowercase(), LocalRuntimeEvent.Outcome.REDIRECTED))
                         if (ProductiveRedirects.launch(this@AttentionAccessibilityService, suggestion.destination)) removeIntervention()
