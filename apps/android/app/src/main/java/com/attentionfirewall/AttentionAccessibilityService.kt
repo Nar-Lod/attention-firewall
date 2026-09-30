@@ -43,6 +43,12 @@ class AttentionAccessibilityService : AccessibilityService() {
         val packageName = event?.packageName?.toString() ?: return
         if (packageName == this.packageName) return
         val now = System.currentTimeMillis()
+        // The first observed interaction of the day can satisfy the morning prompt.
+        // No event text/content is inspected.
+        if (dailyTargets.morningPromptPending()) {
+            showMorningSetup()
+            return
+        }
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
             if (protectedApps.getPackages().contains(packageName)) recordScroll(packageName, now)
             return
@@ -64,14 +70,6 @@ class AttentionAccessibilityService : AccessibilityService() {
             return
         }
         val protected = protectedApps.getPackages().contains(packageName)
-
-        // Morning contract is triggered by the first foreground interaction observed
-        // by the local accessibility service, not by the USER_PRESENT receiver.
-        // This keeps the receiver UI-free while still enforcing the daily contract.
-        if (dailyTargets.morningPromptPending()) {
-            showMorningSetup()
-            return
-        }
 
         if (protected) {
             if (currentPackage == packageName) {
