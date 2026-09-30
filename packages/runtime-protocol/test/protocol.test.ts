@@ -4,7 +4,7 @@ import {validateRuntimeSample} from "../src/index.js";
 describe("runtime protocol",()=>{
   it("accepts bounded web samples",()=>{
     const result=validateRuntimeSample({
-      protocolVersion:1,platform:"web",domain:"example.com",
+      protocolVersion:1,eventKind:"sample",platform:"web",domain:"example.com",
       elapsedSeconds:15,interactions:2,scrolls:20,
       scrollBursts:3,scrollDirectionChanges:1,scrollDistancePerMinute:900
     });
