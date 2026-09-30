@@ -9,6 +9,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.view.ViewGroup
 import android.widget.TextView
@@ -96,7 +97,7 @@ class AttentionAccessibilityService : AccessibilityService() {
                 LocalRuntimeEvent.Sample(
                     platform = "android",
                     domain = packageName,
-                    elapsedSeconds = summary.activeSeconds.coerceIn(0.0, 60.0),
+                    elapsedSeconds = summary.activeSeconds.toDouble().coerceIn(0.0, 60.0),
                     interactions = summary.foregroundTransitions.coerceIn(0, 60),
                     scrolls = 0
                 )
@@ -244,7 +245,7 @@ class AttentionAccessibilityService : AccessibilityService() {
         root.addView(body)
         root.addView(leave)
 
-        val mode = policyStore.getProtectionMode()
+        val mode = DevicePolicyStore(secureStore).getProtectionMode()
         val suggestions = ProductiveRedirects.suggestions(this, "other", secureStore.get("next_task_cue"))
         if (intervention != LocalIntervention.LOCK && suggestions.isNotEmpty()) {
             root.addView(TextView(this).apply {
