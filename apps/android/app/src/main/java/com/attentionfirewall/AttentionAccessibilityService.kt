@@ -23,6 +23,9 @@ class AttentionAccessibilityService : AccessibilityService() {
     private var contextSwitches = 0
     private var lastProtectedPackage: String? = null
     private var lastUsageSampleAt: Long = 0L
+    private var scrollWindowStartedAt: Long = 0L
+    private var scrollEventsInWindow = 0
+    private var redirectTimer: CountDownTimer? = null
     private var recoveryTimer: CountDownTimer? = null
     private val usageSignals by lazy { UsageSignalAdapter(this) }
 
@@ -31,9 +34,13 @@ class AttentionAccessibilityService : AccessibilityService() {
     private val policyStore by lazy { LocalPolicyStore(secureStore) }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-
-        val packageName = event.packageName?.toString() ?: return
+        val packageName = event?.packageName?.toString() ?: return
+        if (packageName == this.packageName) return
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
+            if (protectedApps.getPackages().contains(packageName)) recordScroll(packageName, System.currentTimeMillis())
+            return
+        }
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         if (packageName == this.packageName) return
 
         val now = System.currentTimeMillis()
@@ -94,12 +101,14 @@ class AttentionAccessibilityService : AccessibilityService() {
         val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         val lateNightRisk = if (hour >= 22 || hour < 6) 1.0 else 0.0
         val hardLock = secureStore.get("hard_lock") == "1"
+        val passiveSeconds = if (scrollEventsInWindow >= 12) minOf(sessionSeconds, 180.0) else 0.0
+        val interactionRate = if (scrollEventsInWindow >= 12) 0.02 else 0.2
 
         val assessment = LocalAttentionEngine.assess(
             AttentionFeatures(
                 sessionSeconds = sessionSeconds,
-                passiveSeconds = 0.0,
-                interactionRate = 0.2,
+                passiveSeconds = passiveSeconds,
+                interactionRate = interactionRate,
                 recentReopens = recentReopens,
                 contextSwitches = contextSwitches,
                 declaredIntentMatch = 1.0,
@@ -112,9 +121,17 @@ class AttentionAccessibilityService : AccessibilityService() {
         val minuteOfDay = hour * 60 + java.util.Calendar.getInstance().get(java.util.Calendar.MINUTE)
         val proposedLocal = LocalIntervention.valueOf(proposed.name)
         val intervention = LocalPolicyEngine.enforce(proposedLocal, packageName, minuteOfDay, policyStore.getRules())
-        if (intervention != LocalIntervention.NONE) {
-            showIntervention(intervention)
+        if (intervention != LocalIntervention.NONE) showIntervention(intervention)
+    }
+
+    private fun recordScroll(packageName: String, now: Long) {
+        if (scrollWindowStartedAt == 0L || now - scrollWindowStartedAt > 60_000L) {
+            scrollWindowStartedAt = now
+            scrollEventsInWindow = 0
         }
+        scrollEventsInWindow = (scrollEventsInWindow + 1).coerceAtMost(100)
+        currentPackage = packageName
+        maybeIntervene(packageName, now)
     }
 
     private fun showIntervention(intervention: LocalIntervention) {
@@ -155,6 +172,45 @@ class AttentionAccessibilityService : AccessibilityService() {
         root.addView(title)
         root.addView(body)
         root.addView(leave)
+
+        val mode = policyStore.getProtectionMode()
+        val suggestions = ProductiveRedirects.suggestions(this, "other", secureStore.get("next_task_cue"))
+        if (intervention != LocalIntervention.LOCK && suggestions.isNotEmpty()) {
+            root.addView(TextView(this).apply {
+                text = if (scrollEventsInWindow >= 12) "Opening a productive app can break this loop." else "Try a productive app instead."
+                textSize = 14f
+                setTextColor(Color.rgb(215, 187, 98))
+                setPadding(0, 20, 0, 8)
+            })
+            suggestions.forEach { suggestion ->
+                root.addView(Button(this).apply {
+                    text = suggestion.destination.label + " · " + suggestion.cue
+                    setOnClickListener {
+                        recordRuntimeEvent(LocalRuntimeEvent.InterventionResponse("android", intervention.name.lowercase(), LocalRuntimeEvent.Outcome.REDIRECTED))
+                        if (ProductiveRedirects.launch(this@AttentionAccessibilityService, suggestion.destination)) removeIntervention()
+                    }
+                })
+            }
+            if (mode == ProtectionMode.DEEP_FOCUS && scrollEventsInWindow >= 20) {
+                redirectTimer?.cancel()
+                val cancel = Button(this)
+                cancel.text = "Opening a productive app in 5s"
+                cancel.setOnClickListener { redirectTimer?.cancel(); removeIntervention() }
+                root.addView(cancel)
+                redirectTimer = object : CountDownTimer(5_000L, 1_000L) {
+                    override fun onTick(millisUntilFinished: Long) {
+                        cancel.text = "Opening a productive app in " + ((millisUntilFinished / 1000L).coerceAtLeast(1)) + "s"
+                    }
+                    override fun onFinish() {
+                        val first = suggestions.firstOrNull()
+                        if (first != null && ProductiveRedirects.launch(this@AttentionAccessibilityService, first.destination)) {
+                            recordRuntimeEvent(LocalRuntimeEvent.InterventionResponse("android", intervention.name.lowercase(), LocalRuntimeEvent.Outcome.REDIRECTED))
+                            removeIntervention()
+                        }
+                    }
+                }.start()
+            }
+        }
 
         if (intervention != LocalIntervention.LOCK) {
             root.addView(Button(this).apply {
@@ -253,6 +309,7 @@ class AttentionAccessibilityService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        redirectTimer?.cancel()
         recoveryTimer?.cancel()
         removeIntervention()
         super.onDestroy()
