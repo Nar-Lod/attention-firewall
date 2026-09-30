@@ -1,6 +1,7 @@
 package com.attentionfirewall
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.view.Gravity
@@ -32,6 +33,8 @@ class AttentionAccessibilityService : AccessibilityService() {
     private val protectedApps by lazy { ProtectedAppStore(this) }
     private val secureStore by lazy { SecureLocalStore(this) }
     private val policyStore by lazy { LocalPolicyStore(secureStore) }
+    private val cooldownStore by lazy { CooldownStore(secureStore) }
+    private val dailyTargets by lazy { DailyTargetStore(secureStore) }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val packageName = event?.packageName?.toString() ?: return
@@ -44,6 +47,11 @@ class AttentionAccessibilityService : AccessibilityService() {
         if (packageName == this.packageName) return
 
         val now = System.currentTimeMillis()
+        val cooldown = cooldownStore.active(now)
+        if (cooldown != null && packageName == cooldown.packageName) {
+            showCooldownLock(cooldown, now)
+            return
+        }
         val protected = protectedApps.getPackages().contains(packageName)
 
         if (protected) {
@@ -118,6 +126,13 @@ class AttentionAccessibilityService : AccessibilityService() {
         )
 
         val proposed = LocalAttentionEngine.intervention(assessment, hardLock)
+        val driftDetected = assessment.state == AttentionState.DRIFTING || assessment.state == AttentionState.COMPULSIVE_RISK || scrollEventsInWindow >= 12
+        when (DailyTargetEngine.decide(dailyTargets.morningPromptPending(), dailyTargets.incomplete().size, dailyTargets.allCompleted(), dailyTargets.extraGoalPrompted(), driftDetected)) {
+            DailyTargetDecision.MORNING_SETUP -> { showMorningSetup(); return }
+            DailyTargetDecision.REQUIRE_TARGET -> { showDailyTargetGate(packageName); return }
+            DailyTargetDecision.CELEBRATE_AND_GOAL -> { dailyTargets.markExtraGoalPrompted(); showPostCompletionGoalPrompt(); return }
+            DailyTargetDecision.ALLOW -> Unit
+        }
         val minuteOfDay = hour * 60 + java.util.Calendar.getInstance().get(java.util.Calendar.MINUTE)
         val proposedLocal = LocalIntervention.valueOf(proposed.name)
         val intervention = LocalPolicyEngine.enforce(proposedLocal, packageName, minuteOfDay, policyStore.getRules())
@@ -132,6 +147,62 @@ class AttentionAccessibilityService : AccessibilityService() {
         scrollEventsInWindow = (scrollEventsInWindow + 1).coerceAtMost(100)
         currentPackage = packageName
         maybeIntervene(packageName, now)
+    }
+
+    private fun showCooldownLock(state: CooldownState, now: Long) {
+        if (overlay != null) return
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48,44,48,44); setBackgroundColor(Color.rgb(16,16,16)) }
+        root.addView(TextView(this).apply { text = "Attention Firewall"; textSize = 24f; setTextColor(Color.WHITE) })
+        root.addView(TextView(this).apply {
+            text = "This app is paused. Your cooldown started when the lock was applied.\n\nResume in " + CooldownEngine.remainingLabel(state, now) + "."
+            textSize = 16f; setTextColor(Color.LTGRAY); setPadding(0,18,0,18)
+        })
+        ProductiveRedirects.suggestions(this, "other", secureStore.get("next_task_cue")).forEach { suggestion ->
+            root.addView(Button(this).apply { text = suggestion.destination.label + " · " + suggestion.destination.cue; setOnClickListener { ProductiveRedirects.launch(this@AttentionAccessibilityService, suggestion.destination) } })
+        }
+        val manager=getSystemService(WINDOW_SERVICE) as WindowManager
+        manager.addView(root, WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT,WindowManager.LayoutParams.WRAP_CONTENT,WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,PixelFormat.TRANSLUCENT).apply { gravity=Gravity.CENTER })
+        overlay=root
+        root.postDelayed({ if (cooldownStore.active() == null) removeIntervention() }, 1000L)
+    }
+
+    private fun showMorningSetup() {
+        if (overlay != null) return
+        val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(48,44,48,44);setBackgroundColor(Color.rgb(16,16,16))}
+        root.addView(TextView(this).apply{text="Start the day intentionally";textSize=23f;setTextColor(Color.WHITE)})
+        root.addView(TextView(this).apply{text="Set at least one target. It stays encrypted on this device and becomes your recovery path if attention drifts.";textSize=14f;setTextColor(Color.LTGRAY);setPadding(0,16,0,12)})
+        val inputs=(1..5).map{EditText(this).apply{hint="Target $it";setTextColor(Color.WHITE);setTextColorHint(Color.GRAY)}}; inputs.forEach{root.addView(it)}
+        root.addView(Button(this).apply{text="Set today's targets";setOnClickListener{runCatching{dailyTargets.setToday(inputs.map{it.text.toString()})}.onSuccess{removeIntervention()}}})
+        attachOverlay(root)
+    }
+
+    private fun showDailyTargetGate(sourcePackage:String) {
+        if (overlay != null) return
+        val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(48,44,48,44);setBackgroundColor(Color.rgb(16,16,16))}
+        root.addView(TextView(this).apply{text="Pause. Return to today's targets.";textSize=23f;setTextColor(Color.WHITE)})
+        root.addView(TextView(this).apply{text="Before returning to the distracting app, handle one unfinished target. Completing it starts your chosen cooldown.";textSize=14f;setTextColor(Color.LTGRAY);setPadding(0,16,0,12)})
+        dailyTargets.incomplete().forEach{target->root.addView(Button(this).apply{text="Handle: "+target.title;setOnClickListener{
+            startActivity(Intent(this@AttentionAccessibilityService, MainActivity::class.java).apply{addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP);putExtra(MainActivity.EXTRA_DAILY_TASKS,true);putExtra(MainActivity.EXTRA_DAILY_TARGET_ID,target.id);putExtra(MainActivity.EXTRA_DAILY_SOURCE_PACKAGE,sourcePackage)});removeIntervention()
+        }})}
+        attachOverlay(root)
+    }
+
+    private fun showPostCompletionGoalPrompt() {
+        if (overlay != null) return
+        val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(48,44,48,44);setBackgroundColor(Color.rgb(16,16,16))}
+        root.addView(TextView(this).apply{text="You finished today's targets early.";textSize=23f;setTextColor(Color.WHITE)})
+        root.addView(TextView(this).apply{text="Nice work. Add another goal if you want the day to keep having a clear direction.";textSize=14f;setTextColor(Color.LTGRAY);setPadding(0,16,0,12)})
+        val input=EditText(this).apply{hint="Optional additional goal";setTextColor(Color.WHITE)}
+        root.addView(input)
+        root.addView(Button(this).apply{text="Add goal";setOnClickListener{if(dailyTargets.appendGoal(input.text.toString()))removeIntervention()}})
+        root.addView(Button(this).apply{text="Continue intentionally";setOnClickListener{removeIntervention()}})
+        attachOverlay(root)
+    }
+
+    private fun attachOverlay(root: View) {
+        val manager=getSystemService(WINDOW_SERVICE) as WindowManager
+        manager.addView(root,WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT,WindowManager.LayoutParams.WRAP_CONTENT,WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,PixelFormat.TRANSLUCENT).apply{gravity=Gravity.CENTER})
+        overlay=root
     }
 
     private fun showIntervention(intervention: LocalIntervention) {

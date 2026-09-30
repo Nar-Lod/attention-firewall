@@ -21,6 +21,8 @@ class MainActivity : Activity() {
     private val secureStore by lazy { SecureLocalStore(this) }
     private val protectedStore by lazy { ProtectedAppStore(this) }
     private val devicePolicy by lazy { DevicePolicyStore(secureStore) }
+    private val cooldownStore by lazy { CooldownStore(secureStore) }
+    private val dailyTargets by lazy { DailyTargetStore(secureStore) }
     private val checks = linkedMapOf<String, CheckBox>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,6 +69,8 @@ class MainActivity : Activity() {
             val selected = checks.filterValues { it.isChecked }.keys.toSet()
             protectedStore.setPackages(selected)
             status.text = currentStatus()
+        if (!cooldownStore.isConfigured()) showFirstRunCooldownDialog()
+        if (intent.getBooleanExtra(EXTRA_DAILY_TASKS, false)) handleDailyTaskIntent()
         }
 
         val hardLock = findViewById<CheckBox>(R.id.hardLock)
@@ -81,6 +85,20 @@ class MainActivity : Activity() {
 
         populateApps()
         status.text = currentStatus()
+    }
+
+    private fun showFirstRunCooldownDialog() {
+        val input=EditText(this).apply{hint="Minutes (3 or more)";inputType=android.text.InputType.TYPE_CLASS_NUMBER}
+        val dialog=AlertDialog.Builder(this).setTitle("Set your distraction cooldown").setMessage("Choose how long a distracted app stays unavailable after you complete the required recovery task. Minimum: 3 minutes; longer is allowed.").setView(input).setCancelable(false).setPositiveButton("Save",null).create()
+        dialog.setOnShowListener{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener{val minutes=input.text.toString().trim().toLongOrNull();if(minutes==null||minutes<CooldownEngine.MIN_MINUTES){input.error="Enter at least 3 minutes"}else{runCatching{cooldownStore.setDurationMinutes(minutes)}.onSuccess{dialog.dismiss()}}}}
+        dialog.show()
+    }
+
+    private fun handleDailyTaskIntent(){
+        val id=intent.getStringExtra(EXTRA_DAILY_TARGET_ID) ?: return
+        val source=intent.getStringExtra(EXTRA_DAILY_SOURCE_PACKAGE)
+        val target=dailyTargets.get().firstOrNull{it.id==id} ?: return
+        AlertDialog.Builder(this).setTitle("Handle target").setMessage(target.title+"\n\nWhen you confirm completion, the distracting app will enter its cooldown immediately.").setNegativeButton("Not yet",null).setPositiveButton("I handled it"){_,_->if(dailyTargets.markCompleted(id)){if(!source.isNullOrBlank()&&cooldownStore.isConfigured())cooldownStore.start(source,System.currentTimeMillis(),"daily-target");intent.replaceExtras(Bundle());finish()}}.setOnDismissListener{if(!isFinishing&&intent.getBooleanExtra(EXTRA_DAILY_TASKS,false)){intent.replaceExtras(Bundle())}}.show()
     }
 
     private fun showHardProtectionDisclosure() {
@@ -145,5 +163,11 @@ class MainActivity : Activity() {
         secureStore.put("last_local_summary", summary.toJson())
         status.text = "Local sample: " + summary.foregroundTransitions +
             " transitions, " + summary.activeSeconds + "s active time. Nothing uploaded."
+    }
+
+    companion object {
+        const val EXTRA_DAILY_TASKS = "daily_tasks"
+        const val EXTRA_DAILY_TARGET_ID = "daily_target_id"
+        const val EXTRA_DAILY_SOURCE_PACKAGE = "daily_source_package"
     }
 }
