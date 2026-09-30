@@ -27,6 +27,8 @@ class AttentionAccessibilityService : AccessibilityService() {
     private var lastUsageSampleAt: Long = 0L
     private var scrollWindowStartedAt: Long = 0L
     private var scrollEventsInWindow = 0
+    private var clickEventsInWindow = 0
+    private var textChangeEventsInWindow = 0
     private var redirectTimer: CountDownTimer? = null
     private var recoveryTimer: CountDownTimer? = null
     private val usageSignals by lazy { UsageSignalAdapter(this) }
@@ -40,14 +42,22 @@ class AttentionAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val packageName = event?.packageName?.toString() ?: return
         if (packageName == this.packageName) return
+        val now = System.currentTimeMillis()
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
-            if (protectedApps.getPackages().contains(packageName)) recordScroll(packageName, System.currentTimeMillis())
+            if (protectedApps.getPackages().contains(packageName)) recordScroll(packageName, now)
+            return
+        }
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+            event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
+            if (protectedApps.getPackages().contains(packageName)) {
+                if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) clickEventsInWindow = (clickEventsInWindow + 1).coerceAtMost(200)
+                if (event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) textChangeEventsInWindow = (textChangeEventsInWindow + 1).coerceAtMost(200)
+            }
             return
         }
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         if (packageName == this.packageName) return
 
-        val now = System.currentTimeMillis()
         val cooldown = cooldownStore.active(now)
         if (cooldown != null && packageName == cooldown.packageName) {
             showCooldownLock(cooldown, now)
@@ -118,8 +128,9 @@ class AttentionAccessibilityService : AccessibilityService() {
         val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         val lateNightRisk = if (hour >= 22 || hour < 6) 1.0 else 0.0
         val hardLock = secureStore.get("hard_lock") == "1"
-        val passiveSeconds = if (scrollEventsInWindow >= 12) minOf(sessionSeconds, 180.0) else 0.0
-        val interactionRate = if (scrollEventsInWindow >= 12) 0.02 else 0.2
+        val activeInteractions = clickEventsInWindow + textChangeEventsInWindow
+        val interactionRate = (activeInteractions.toDouble() / (scrollEventsInWindow + activeInteractions).coerceAtLeast(1)).coerceIn(0.0, 1.0)
+        val passiveSeconds = if (scrollEventsInWindow >= 12 && interactionRate < 0.15) minOf(sessionSeconds, 180.0) else 0.0
 
         val assessment = LocalAttentionEngine.assess(
             AttentionFeatures(
@@ -152,6 +163,8 @@ class AttentionAccessibilityService : AccessibilityService() {
         if (scrollWindowStartedAt == 0L || now - scrollWindowStartedAt > 60_000L) {
             scrollWindowStartedAt = now
             scrollEventsInWindow = 0
+            clickEventsInWindow = 0
+            textChangeEventsInWindow = 0
         }
         scrollEventsInWindow = (scrollEventsInWindow + 1).coerceAtMost(100)
         currentPackage = packageName
