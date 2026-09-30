@@ -32,7 +32,7 @@ export interface RuntimeInterventionResponse{
  eventKind:"intervention-response";
  platform:RuntimePlatform;
  intervention:string;
- outcome:"continued"|"exited";
+ outcome:"continued"|"exited"|"redirected";
 }
 
 export interface RuntimeRecoveryCompleted{
@@ -93,7 +93,7 @@ export function validateRuntimeSample(value:unknown):RuntimeSample{
 export function validateRuntimeInterventionResponse(value:unknown):RuntimeInterventionResponse{
  const v=validateEnvelope(value,"intervention-response");
  if(typeof v.intervention!=="string"||!INTERVENTIONS.includes(v.intervention as typeof INTERVENTIONS[number]))throw new Error("invalid intervention");
- if(v.outcome!=="continued"&&v.outcome!=="exited")throw new Error("invalid intervention outcome");
+ if(v.outcome!=="continued"&&v.outcome!=="exited"&&v.outcome!=="redirected")throw new Error("invalid intervention outcome");
  return {protocolVersion:1,eventKind:"intervention-response",platform:v.platform as RuntimePlatform,intervention:v.intervention,outcome:v.outcome};
 }
 
