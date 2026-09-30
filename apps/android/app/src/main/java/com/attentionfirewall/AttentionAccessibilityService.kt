@@ -81,7 +81,7 @@ class AttentionAccessibilityService : AccessibilityService() {
                 LocalRuntimeEvent.Sample(
                     platform = "android",
                     domain = packageName,
-                    elapsedSeconds = summary.activeSeconds.coerceIn(0L, 60L).toInt(),
+                    elapsedSeconds = summary.activeSeconds.coerceIn(0.0, 60.0),
                     interactions = summary.foregroundTransitions.coerceIn(0, 60),
                     scrolls = 0
                 )
@@ -202,7 +202,7 @@ class AttentionAccessibilityService : AccessibilityService() {
             }
 
             override fun onFinish() {
-                recordRuntimeEvent(LocalRuntimeEvent.RecoveryCompleted("android", 120))
+                recordRuntimeEvent(LocalRuntimeEvent.RecoveryCompleted("android", 120.0))
                 removeIntervention()
             }
         }.start()
