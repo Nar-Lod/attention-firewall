@@ -42,6 +42,14 @@ class DevicePolicyStore(private val secureStore: SecureLocalStore) {
         }.getOrDefault(DevicePolicy())
     }
 
+    fun getProtectionMode(): ProtectionMode = get().protectionMode
+
+    fun setProtectionMode(mode: ProtectionMode): DevicePolicy {
+        val next = get().copy(protectionMode = mode)
+        set(next)
+        return next
+    }
+
     fun set(policy: DevicePolicy) {
         require(policy.protectedPackages.size <= 100)
         val packages = org.json.JSONArray()
