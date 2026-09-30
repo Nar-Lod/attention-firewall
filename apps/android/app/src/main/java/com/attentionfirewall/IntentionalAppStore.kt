@@ -27,7 +27,7 @@ class IntentionalAppStore(private val secureStore: SecureLocalStore) {
     }
     fun discover(context: Context): List<IntentionalApp> {
         val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        return context.packageManager.queryIntentActivities(launcher, 0).map(ResolveInfo::activityInfo)
+        return context.packageManager.queryIntentActivities(launcher, 0).map { it.activityInfo }
             .map { info -> IntentionalApp(info.packageName, info.loadLabel(context.packageManager).toString().ifBlank { info.packageName }, "") }
             .filterNot { it.packageName == context.packageName }.distinctBy { it.packageName }.sortedBy { it.label.lowercase() }.take(150)
     }
