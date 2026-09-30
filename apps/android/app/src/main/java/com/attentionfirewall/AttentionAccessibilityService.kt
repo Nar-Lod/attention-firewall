@@ -55,6 +55,14 @@ class AttentionAccessibilityService : AccessibilityService() {
         }
         val protected = protectedApps.getPackages().contains(packageName)
 
+        // Morning contract is triggered by the first foreground interaction observed
+        // by the local accessibility service, not by the USER_PRESENT receiver.
+        // This keeps the receiver UI-free while still enforcing the daily contract.
+        if (dailyTargets.morningPromptPending()) {
+            showMorningSetup()
+            return
+        }
+
         if (protected) {
             if (currentPackage == packageName) {
                 maybeIntervene(packageName, now)
