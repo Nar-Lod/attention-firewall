@@ -154,3 +154,45 @@ footer{display:flex;justify-content:space-between;gap:20px;color:#666;font-size:
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
 }
+
+.onboarding-page{min-height:100vh;background:radial-gradient(circle at 80% 10%,rgba(111,32,44,.22),transparent 32%),var(--af-ink);padding:24px 34px 50px}
+.onboarding-top{width:min(1280px,100%);margin:auto;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--af-border);padding-bottom:18px}
+.setup-mark{display:grid;place-items:center;width:52px;height:52px;border:1px solid var(--af-red-soft);color:var(--af-gold);font-weight:900;font-size:18px;letter-spacing:-.08em}
+.onboarding-card{max-width:620px;margin:18vh auto 0;text-align:center}
+.onboarding-card h1{font-size:clamp(42px,7vw,76px);line-height:.96;letter-spacing:-.06em;margin:18px 0}
+.onboarding-card p:last-child{color:#777}
+.setup-layout{width:min(1280px,100%);margin:70px auto 0;display:grid;grid-template-columns:minmax(0,1fr) minmax(430px,560px);gap:90px;align-items:start}
+.setup-aside{padding-top:25px}
+.setup-aside h1{font-size:clamp(46px,5.5vw,74px);line-height:.91;letter-spacing:-.06em;margin:15px 0 24px}
+.setup-aside h1 em{font-style:normal;color:var(--af-red)}
+.setup-aside>p:not(.eyebrow){max-width:580px;color:#858585;line-height:1.75;font-size:15px}
+.setup-points{display:grid;gap:0;margin-top:35px;border-top:1px solid var(--af-border)}
+.setup-points span{padding:15px 0;border-bottom:1px solid var(--af-border);font-size:11px;letter-spacing:.1em;color:#999}
+.setup-panel{background:rgba(16,16,16,.94);border:1px solid var(--af-border);padding:34px;box-shadow:0 24px 80px rgba(0,0,0,.28)}
+.setup-progress{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:34px}
+.setup-progress i{height:3px;background:#282828}
+.setup-progress i.active{background:var(--af-red)}
+.setup-step{min-height:400px}
+.step-kicker{font-size:9px;letter-spacing:.17em;color:#a76a72}
+.setup-step h2{font-size:34px;line-height:1.02;letter-spacing:-.04em;margin:13px 0}
+.setup-step>p{color:#858585;line-height:1.65;margin-bottom:25px}
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.choice,.recovery-choice{display:grid!important;text-align:left!important;gap:6px!important;margin:0!important;padding:16px!important;background:#151515!important;border:1px solid #2c2c2c!important;color:#ddd!important;border-radius:8px!important}
+.choice b,.recovery-choice b{font-size:13px;text-transform:capitalize}
+.choice small,.recovery-choice small{font-size:10px;color:#777;line-height:1.4}
+.choice.selected,.recovery-choice.selected{border-color:#8b3541!important;background:#211417!important;box-shadow:inset 3px 0 var(--af-red)}
+.setup-step label{display:block;color:#777;font-size:9px;letter-spacing:.12em;margin:18px 0}
+.setup-step label input{display:block;width:100%;margin-top:7px;background:#171717;border:1px solid #353535;color:#fff;padding:14px;border-radius:6px;font-size:16px;min-height:50px}
+.unit-input{position:relative}.unit-input input{padding-right:75px!important}.unit-input span{position:absolute;right:14px;top:24px;color:#666;font-size:11px;letter-spacing:0}
+.privacy-callout{display:grid;gap:5px;border-left:2px solid var(--af-gold);background:#131313;padding:12px 14px;margin-top:22px}
+.privacy-callout b{font-size:9px;letter-spacing:.12em;color:var(--af-gold)}
+.privacy-callout span{font-size:11px;color:#777;line-height:1.5}
+.recovery-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.recovery-choice span{color:var(--af-gold);font-size:15px}
+.setup-actions{display:flex;justify-content:flex-end;gap:9px;border-top:1px solid #292929;padding-top:20px;margin-top:10px}
+.setup-actions button{min-height:48px;padding:12px 20px;border-radius:6px;cursor:pointer;font-weight:700}
+.setup-primary{background:var(--af-red);border:0;color:#fff}
+.setup-back{background:#171717;border:1px solid #333;color:#aaa}
+.setup-panel .status-line{margin-bottom:0}
+@media(max-width:900px){.setup-layout{grid-template-columns:1fr;gap:30px;margin-top:40px}.setup-aside{padding-top:0}.setup-step{min-height:0}}
+@media(max-width:600px){.onboarding-page{padding:18px 16px 35px}.setup-layout{margin-top:28px}.setup-panel{padding:22px}.choice-grid,.recovery-choice-grid{grid-template-columns:1fr}.setup-aside h1{font-size:48px}.onboarding-top .privacy{font-size:8px}.setup-step h2{font-size:29px}}
