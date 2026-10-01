@@ -247,7 +247,7 @@ function safeRules(value:unknown):PolicyRule[]{try{return validateRules(value)}c
 
 async function handleRecovery(tabId:number,durationSeconds:number){
  const pending=pendingRecovery.get(tabId);
- if(!pending||Date.now()-pending.startedAt>60_000){pendingRecovery.delete(tabId);return;}
+ if(!pending||Date.now()-pending.startedAt>11*60_000){pendingRecovery.delete(tabId);return;}
  const bounded=Math.max(120,Math.min(durationSeconds,600));
  const stored=await getLocalState();
  let summary=stored.dailySummary as ReturnType<typeof emptyDay>|undefined;
