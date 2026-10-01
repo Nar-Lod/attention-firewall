@@ -180,6 +180,12 @@ export default function Home(){
    return;
   }
   const now=Date.now();
+  const existing=profile.commitments.find(c=>c.endAt>now&&c.targetDomains.some(d=>normalizeDomain(d)===target));
+  if(existing){
+   setStatus("An active commitment already protects this destination. Review it below before creating another.");
+   return;
+  }
+  const now=Date.now();
   const commitment:Commitment={
    id:"commit_"+crypto.randomUUID(),
    label:"Protect "+target,
@@ -195,7 +201,23 @@ export default function Home(){
   await profileStore.set(nextProfile);
   if(runtime)runtime.setConfig({commitments:nextProfile.commitments});
   setCommitDomain("");
-  setStatus("Commitment started locally.");
+  setStatus("Commitment started locally and attached to the active session.");
+ };
+
+ const endCommitment=async(id:string)=>{
+  const selected=profile.commitments.find(c=>c.id===id);
+  if(!selected)return;
+  const now=Date.now();
+  const inChangeWindow=now>=selected.startAt&&now<selected.startAt+selected.changeCooldownMinutes*60_000;
+  if(inChangeWindow){
+   setStatus("This commitment is in its protected change window. You can review it, but cannot end it yet.");
+   return;
+  }
+  const nextProfile={...profile,commitments:profile.commitments.filter(c=>c.id!==id)};
+  setProfile(nextProfile);
+  await profileStore.set(nextProfile);
+  if(runtime)runtime.setConfig({commitments:nextProfile.commitments});
+  setStatus("Commitment ended and the active session policy was updated.");
  };
 
  const finishSetup=async()=>{
@@ -296,8 +318,13 @@ export default function Home(){
       <input value={commitMinutes} onChange={e=>setCommitMinutes(e.target.value)} type="number" min="1" max="240" placeholder="Minutes"/>
       <select value={commitLevel} onChange={e=>setCommitLevel(e.target.value as Commitment["minimumIntervention"])}><option value="pause">Pause</option><option value="delay">Delay</option><option value="commitment">Commitment</option><option value="lock">Lock</option></select>
     </div>
-    <p>Set the rule while calm. It will be enforced locally until the commitment expires.</p>
-    <button onClick={startCommitment}>Start commitment</button>
+    <p>Set the rule while calm. It will be enforced locally until the commitment expires. Active commitments are attached to the current session policy.</p>
+    <button onClick={()=>void startCommitment()}>Start commitment</button>
+    <div className="commitment-list">{profile.commitments.filter(c=>c.endAt>Date.now()).map(c=>{
+      const remaining=Math.max(0,Math.ceil((c.endAt-Date.now())/60000));
+      const locked=Date.now()<c.startAt+c.changeCooldownMinutes*60_000;
+      return <div key={c.id} className="commitment-item"><div><b>{c.targetDomains.join(", ")}</b><small>{c.minimumIntervention} · {remaining} min remaining{locked?" · protected change window":""}</small></div><button type="button" className="secondary-button" disabled={locked} onClick={()=>void endCommitment(c.id)}>End</button></div>;
+    })}</div>
    </article>
 
    <article className="card">
