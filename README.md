@@ -63,7 +63,7 @@ The privacy and compliance documents are engineering/product specifications, not
 
 ## Development roadmap and time budget
 
-The fragmented execution plan is maintained in [docs/ROADMAP.md](docs/ROADMAP.md). It allocates a maximum of **120 minutes per development day**, with research and acceptance criteria before implementation, and validation before a chunk is marked complete.
+The fragmented execution plan is summarized below and in the companion planning documents. It allocates a maximum of **120 minutes per development day**, with research and acceptance criteria before implementation, and validation before a chunk is marked complete.
 
 - **Total planned effort:** 46 hours across 10 sections.
 - **Completed sections:** 16 hours allocated retrospectively (Sections 01–04); these are estimates, not verified time logs.
