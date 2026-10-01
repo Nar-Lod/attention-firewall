@@ -95,7 +95,7 @@ function initialize(){
 }
 
 function safeDomain(){
- try{return location.hostname.replace(/^www\\./,"").slice(0,253)}
+ try{return location.hostname.replace(/^www\./,"").slice(0,253)}
  catch{return "unknown"}
 }
 
