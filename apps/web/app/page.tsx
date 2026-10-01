@@ -65,6 +65,8 @@ export default function Home(){
  const [history,setHistory]=useState<DailyHistory>({version:1,days:[]});
  const [status,setStatus]=useState("");
  const [sessionNow,setSessionNow]=useState(Date.now());
+ const [setupStep,setSetupStep]=useState(0);
+ const [setupFinished,setSetupFinished]=useState(false);
 
  useEffect(()=>{
   if(!runtime)return;
@@ -88,6 +90,7 @@ export default function Home(){
    setRedirectShelf(stored.redirectShelf??blankProfile.redirectShelf);
    setHistory(savedHistory);
    setSummary(savedHistory.days[0]??emptyDay());
+   setSetupFinished(Boolean(stored.intent));
    setLoaded(true);
   })();
  },[loaded,historyStore,profileStore]);
@@ -169,12 +172,42 @@ export default function Home(){
   setStatus("Commitment started locally.");
  };
 
+ const finishSetup=async()=>{
+  const targetDomains=domains.split(",").map(normalizeDomain).filter(Boolean).slice(0,30);
+  if(!intent.trim()||targetDomains.length===0){setStatus("Add your intention and at least one protected destination.");return;}
+  const now=Date.now();
+  const currentIntent:LocalIntent={id:now.toString(36),label:intent.trim().slice(0,120),purpose,targetDomains,startedAt:now,...(Number.isFinite(Number(budget))&&Number(budget)>=1&&Number(budget)<=240?{budgetMinutes:Math.floor(Number(budget))}:{})};
+  const nextProfile={...profile,intent:currentIntent,protectionMode:mode,redirectShelf};
+  setProfile(nextProfile); await profileStore.set(nextProfile); setSetupFinished(true); setSetupStep(0); setStatus("Your local protection profile is ready.");
+ };
+ const setupNext=()=>{
+  if(setupStep===1 && !intent.trim()){setStatus("Give your protection plan an intention.");return;}
+  if(setupStep===2 && domains.split(",").map(normalizeDomain).filter(Boolean).length===0){setStatus("Add at least one destination to protect.");return;}
+  if(setupStep<3)setSetupStep(setupStep+1);else void finishSetup();
+ };
+ const setupBack=()=>setSetupStep(Math.max(0,setupStep-1));
+
  const recoveredMinutes=Math.round((summary.attentionRecoveredSeconds??0)/60);
  const sessionSeconds=runtime&&profile.intent?Math.max(0,Math.floor((sessionNow-profile.intent.startedAt)/1000)):0;
  const sessionMinutes=Math.floor(sessionSeconds/60);
  const sessionRemainder=String(sessionSeconds%60).padStart(2,"0");
  const sessionBudget=profile.intent?.budgetMinutes??0;
  const sessionProgress=sessionBudget?Math.min(100,Math.round((sessionSeconds/(sessionBudget*60))*100)):0;
+
+ if(!loaded)return <main className="onboarding-page"><div className="onboarding-card"><span className="setup-mark">AF</span><p className="eyebrow">ATTENTION FIREWALL</p><h1>Protect the attention you meant to use.</h1><p>Loading your private local control center…</p></div></main>;
+ if(!setupFinished)return <main className="onboarding-page">
+  <div className="onboarding-top"><div className="brand"><span className="mark">AF</span><div><strong>ATTENTION FIREWALL</strong><small>privacy-first attention control</small></div></div><span className="privacy">LOCAL SETUP · {setupStep+1}/4</span></div>
+  <div className="setup-layout"><aside className="setup-aside"><p className="eyebrow">YOUR FIRST 2 MINUTES</p><h1>Make distraction harder.<br/><em>Make intention easier.</em></h1><p>Attention Firewall is not a screen-time scoreboard. It creates deliberate friction at the moment your attention starts to drift, then gives you somewhere useful to go.</p><div className="setup-points"><span>01 · Set your intention</span><span>02 · Define what to protect</span><span>03 · Choose your recovery path</span><span>04 · Keep the sensitive loop local</span></div></aside>
+  <section className="setup-panel">
+   <div className="setup-progress"><i className={setupStep>=0?"active":""}/><i className={setupStep>=1?"active":""}/><i className={setupStep>=2?"active":""}/><i className={setupStep>=3?"active":""}/></div>
+   {setupStep===0&&<div className="setup-step"><span className="step-kicker">START WITH WHY</span><h2>What are you protecting today?</h2><p>Choose the kind of attention you want the Firewall to defend. You can change this later.</p><div className="choice-grid">{(["work","study","communication","entertainment","rest","other"] as Purpose[]).map(p=><button key={p} type="button" className={purpose===p?"choice selected":"choice"} onClick={()=>applyPreset(p)}><b>{p}</b><small>{p==="work"?"Deep work and projects":p==="study"?"Learning and revision":p==="communication"?"Essential messages and calls":p==="entertainment"?"A deliberate break":"A calmer, intentional day"}</small></button>)}</div></div>}
+   {setupStep===1&&<div className="setup-step"><span className="step-kicker">01 · YOUR INTENTION</span><h2>What should win when distraction appears?</h2><p>Write the action you actually want to return to. This becomes the language of your interventions.</p><label>YOUR INTENTION<input autoFocus value={intent} onChange={e=>setIntent(e.target.value)} maxLength={120} placeholder="e.g. Finish the report before lunch"/></label><label>FOCUS BUDGET <div className="unit-input"><input value={budget} onChange={e=>setBudget(e.target.value)} type="number" min="1" max="240"/><span>minutes</span></div></label></div>}
+   {setupStep===2&&<div className="setup-step"><span className="step-kicker">02 · PROTECTION BOUNDARY</span><h2>Where does your attention usually leak?</h2><p>Start with the places you want the Firewall to protect. Enter domains separated by commas. The browser layer only acts on destinations you explicitly choose.</p><label>PROTECTED DESTINATIONS<input autoFocus value={domains} onChange={e=>setDomains(e.target.value)} placeholder="instagram.com, tiktok.com, youtube.com"/></label><div className="privacy-callout"><b>LOCAL BY DESIGN</b><span>The Firewall does not need to read page contents, messages, passwords or browsing history to intervene.</span></div></div>}
+   {setupStep===3&&<div className="setup-step"><span className="step-kicker">03 · RECOVERY PATH</span><h2>When we interrupt you, where should you go?</h2><p>Pick the useful destinations you want offered instead of continuing the distraction.</p><div className="recovery-choice-grid">{([["tasks","To-Do List","Handle the next concrete task"],["notes","Notes","Capture the thought and move on"],["calendar","Calendar","Check what you planned next"],["current-task","Current task","Return to the work already in progress"]] as const).map(([key,title,desc])=><button key={key} type="button" className={redirectShelf.includes(key)?"recovery-choice selected":"recovery-choice"} onClick={()=>{const next=redirectShelf.includes(key)?redirectShelf.filter(x=>x!==key):[...redirectShelf,key];if(next.length)setRedirectShelf(next)}}><span>{redirectShelf.includes(key)?"✓":"+"}</span><b>{title}</b><small>{desc}</small></button>)}</div><div className="privacy-callout"><b>YOUR DATA</b><span>Detailed attention state stays on this device. Cloud sync is not required for the protection loop.</span></div></div>}
+   <div className="setup-actions">{setupStep>0&&<button type="button" className="setup-back" onClick={setupBack}>Back</button>}<button type="button" className="setup-primary" onClick={setupNext}>{setupStep===3?"Enter Attention Firewall":"Continue"}</button></div>
+   {status&&<p className="status-line" role="status">{status}</p>}
+  </section></div>
+ </main>;
 
  return <main className="shell">
   <header>
