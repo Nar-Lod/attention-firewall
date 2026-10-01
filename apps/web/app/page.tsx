@@ -49,7 +49,7 @@ export default function Home(){
  const profileStore=useMemo(()=>new EncryptedIndexedDbStore<Profile>("profile-v2","attention-firewall-web-profile"),[]);
  const historyStore=useMemo(()=>new EncryptedIndexedDbStore<DailyHistory>("history-v2","attention-firewall-web-history"),[]);
 
- const [loaded,setLoaded]=useState(true);
+ const [hydrated,setHydrated]=useState(false);
  const [profile,setProfile]=useState<Profile>(blankProfile);
  const [intent,setIntent]=useState("Finish focused work");
  const [purpose,setPurpose]=useState<Purpose>("work");
@@ -76,8 +76,6 @@ export default function Home(){
  },[runtime]);
 
  useEffect(()=>{
-  if(loaded)return;
-  setLoaded(true);
   void (async()=>{
    try{
     const timeout=new Promise<never>((_,reject)=>window.setTimeout(()=>reject(new Error("Local storage initialization timed out.")),8000));
@@ -99,11 +97,13 @@ export default function Home(){
     setHistory(resolvedHistory);
     setSummary(resolvedHistory.days[0]??emptyDay());
     setSetupFinished(Boolean(resolvedProfile.intent));
+    setHydrated(true);
    }catch(error){
     setLoadError(error instanceof Error?error.message:"Local storage is unavailable.");
+    setHydrated(true);
    }
   })();
- },[loaded,historyStore,profileStore]);
+ },[historyStore,profileStore]);
 
  const twin=useMemo(()=>buildAttentionTwin(history.days,profile.interventionProfile),[history,profile.interventionProfile]);
 
@@ -205,6 +205,7 @@ export default function Home(){
  const sessionProgress=sessionBudget?Math.min(100,Math.round((sessionSeconds/(sessionBudget*60))*100)):0;
 
  if(loadError)setStatus("Local persistence is unavailable right now. Your setup can still continue; we will retry storage when you save.");
+ if(!hydrated)return <main className="onboarding-page"><div className="onboarding-card"><span className="setup-mark">AF</span><p className="eyebrow">ATTENTION FIREWALL</p><h1>Preparing your private control center.</h1><p>Local configuration is loading in the background. Your attention data never needs to leave this device.</p></div></main>;
  if(!setupFinished)return <main className="onboarding-page">
   <div className="onboarding-top"><div className="brand"><span className="mark">AF</span><div><strong>ATTENTION FIREWALL</strong><small>privacy-first attention control</small></div></div><span className="privacy">LOCAL SETUP · {setupStep+1}/4</span></div>
   <div className="setup-layout"><aside className="setup-aside"><p className="eyebrow">YOUR FIRST 2 MINUTES</p><h1>Make distraction harder.<br/><em>Make intention easier.</em></h1><p>Attention Firewall is not a screen-time scoreboard. It creates deliberate friction at the moment your attention starts to drift, then gives you somewhere useful to go.</p><div className="setup-points"><span>01 · Set your intention</span><span>02 · Define what to protect</span><span>03 · Choose your recovery path</span><span>04 · Keep the sensitive loop local</span></div></aside>
