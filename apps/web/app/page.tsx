@@ -67,6 +67,7 @@ export default function Home(){
  const [sessionNow,setSessionNow]=useState(Date.now());
  const [setupStep,setSetupStep]=useState(0);
  const [setupFinished,setSetupFinished]=useState(false);
+ const [loadError,setLoadError]=useState("");
 
  useEffect(()=>{
   if(!runtime)return;
@@ -77,21 +78,28 @@ export default function Home(){
  useEffect(()=>{
   if(loaded)return;
   void (async()=>{
-   const stored=(await profileStore.get())??blankProfile;
-   const savedHistory=(await historyStore.get())??{version:1,days:[]};
-   setProfile(stored);
-   if(stored.intent){
-    setIntent(stored.intent.label);
-    setPurpose(stored.intent.purpose);
-    setDomains(stored.intent.targetDomains.join(", "));
-    setBudget(stored.intent.budgetMinutes?String(stored.intent.budgetMinutes):"");
+   try{
+    const timeout=new Promise<never>((_,reject)=>window.setTimeout(()=>reject(new Error("Local storage initialization timed out. Please retry.")),8000));
+    const [stored,savedHistory]=await Promise.race([Promise.all([profileStore.get(),historyStore.get()]),timeout]) as [Profile|null,DailyHistory|null];
+    const resolvedProfile=stored??blankProfile;
+    const resolvedHistory=savedHistory??{version:1,days:[]};
+    setProfile(resolvedProfile);
+   if(resolvedProfile.intent){
+    setIntent(resolvedProfile.intent.label);
+    setPurpose(resolvedProfile.intent.purpose);
+    setDomains(resolvedProfile.intent.targetDomains.join(", "));
+    setBudget(resolvedProfile.intent.budgetMinutes?String(resolvedProfile.intent.budgetMinutes):"");
    }
-   setMode(stored.protectionMode);
-   setRedirectShelf(stored.redirectShelf??blankProfile.redirectShelf);
-   setHistory(savedHistory);
-   setSummary(savedHistory.days[0]??emptyDay());
-   setSetupFinished(Boolean(stored.intent));
+   setMode(resolvedProfile.protectionMode);
+   setRedirectShelf(resolvedProfile.redirectShelf??blankProfile.redirectShelf);
+   setHistory(resolvedHistory);
+   setSummary(resolvedHistory.days[0]??emptyDay());
+   setSetupFinished(Boolean(resolvedProfile.intent));
    setLoaded(true);
+   }catch(error){
+    setLoadError(error instanceof Error?error.message:"Unable to open local attention storage.");
+    setLoaded(true);
+   }
   })();
  },[loaded,historyStore,profileStore]);
 
@@ -195,6 +203,7 @@ export default function Home(){
  const sessionProgress=sessionBudget?Math.min(100,Math.round((sessionSeconds/(sessionBudget*60))*100)):0;
 
  if(!loaded)return <main className="onboarding-page"><div className="onboarding-card"><span className="setup-mark">AF</span><p className="eyebrow">ATTENTION FIREWALL</p><h1>Protect the attention you meant to use.</h1><p>Loading your private local control center…</p></div></main>;
+ if(loadError)return <main className="onboarding-page"><div className="onboarding-card"><span className="setup-mark">AF</span><p className="eyebrow">LOCAL STORAGE CHECK</p><h1>Your private attention space could not be opened.</h1><p>{loadError}</p><p className="preview-note">Your attention data is not sent to the cloud. This usually means the browser blocked or interrupted local storage access.</p><div className="setup-actions"><button type="button" className="setup-primary" onClick={()=>window.location.reload()}>Retry local storage</button></div></div></main>;
  if(!setupFinished)return <main className="onboarding-page">
   <div className="onboarding-top"><div className="brand"><span className="mark">AF</span><div><strong>ATTENTION FIREWALL</strong><small>privacy-first attention control</small></div></div><span className="privacy">LOCAL SETUP · {setupStep+1}/4</span></div>
   <div className="setup-layout"><aside className="setup-aside"><p className="eyebrow">YOUR FIRST 2 MINUTES</p><h1>Make distraction harder.<br/><em>Make intention easier.</em></h1><p>Attention Firewall is not a screen-time scoreboard. It creates deliberate friction at the moment your attention starts to drift, then gives you somewhere useful to go.</p><div className="setup-points"><span>01 · Set your intention</span><span>02 · Define what to protect</span><span>03 · Choose your recovery path</span><span>04 · Keep the sensitive loop local</span></div></aside>
