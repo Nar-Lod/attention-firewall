@@ -59,3 +59,17 @@ pnpm build
 ## Disclaimer
 
 The privacy and compliance documents are engineering/product specifications, not legal advice. The product should undergo a formal Kenya Data Protection Act review and, where required, a Data Protection Impact Assessment before production processing at scale.
+
+
+## Development roadmap and time budget
+
+The fragmented execution plan is summarized below and in the companion planning documents. It allocates a maximum of **120 minutes per development day**, with research and acceptance criteria before implementation, and validation before a chunk is marked complete.
+
+- **Total planned effort:** 46 hours across 10 sections.
+- **Completed sections:** 16 hours allocated retrospectively (Sections 01–04); these are estimates, not verified time logs.
+- **Remaining:** 30 hours, or 15 two-hour development blocks.
+- **Current effort-indexed position:** Development Day 9, Section 05 (signal bridge and recovery lifecycle) in progress.
+- **Projected finish:** October 16, 2026, if the next work block starts October 2 and work happens daily. Missed days shift the date.
+- Percentages in the roadmap describe effort allocation, not verified code-completion percentages.
+
+The roadmap includes section-by-section research instructions, small indexed work blocks, daily execution protocol, and completion gates. Re-estimate after research or test findings change scope.
