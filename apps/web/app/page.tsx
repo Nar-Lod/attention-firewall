@@ -121,7 +121,23 @@ export default function Home(){
   setPurpose(preset);setIntent(selected.intent);setBudget(selected.budget);setDomains(selected.domains);setStatus("Preset loaded locally. Review it before starting.");
  };
 
- const start=()=>{
+ const endSession=async(message="Local session ended. Session aggregates were saved to this device.")=>{
+  if(!runtime)return;
+  const finalSummary=runtime.getSummary();
+  const nextHistory=upsertDay(history,finalSummary);
+  setHistory(nextHistory);
+  setSummary(finalSummary);
+  await historyStore.set(nextHistory);
+  const nextProfile={...profile,interventionProfile:runtime.getInterventionProfile()};
+  setProfile(nextProfile);
+  await profileStore.set(nextProfile);
+  runtime.complete();
+  setRuntime(null);
+  setStatus(message);
+ };
+
+ const start=async()=>{
+  if(runtime)await endSession("Previous local session saved. Starting a new local session.");
   const targetDomains=domains.split(",").map(normalizeDomain).filter(Boolean).slice(0,30);
   if(!intent.trim()||targetDomains.length===0){
    setStatus("Add an intent and at least one target domain.");
@@ -255,12 +271,12 @@ export default function Home(){
     </div>
     <input value={domains} onChange={e=>setDomains(e.target.value)} placeholder="Target domains, comma separated"/>
     <div className="preset-row"><span>QUICK START</span>{(["work","study","communication","entertainment"] as Purpose[]).map(p=><button key={p} type="button" className="preset-button" onClick={()=>applyPreset(p)}>{p}</button>)}</div>
-    <button onClick={start}>{runtime?"Restart local session":"Start local session"}</button>
+    <button onClick={()=>void start()}>{runtime?"Restart local session":"Start local session"}</button>
    </article>
 
    <article className="card">
     <div className="label">LOCAL SESSION</div>
-    <div className="session-header"><div><span className="session-time">{sessionMinutes}:{sessionRemainder}</span><small>{sessionBudget?`${sessionProgress}% of ${sessionBudget} min budget`:"open session"}</small></div>{runtime&&<button className="secondary-button session-end" onClick={async()=>{if(!runtime){return;} const finalSummary=runtime.getSummary(); const nextHistory=upsertDay(history,finalSummary); setHistory(nextHistory); setSummary(finalSummary); await historyStore.set(nextHistory); const nextProfile={...profile,interventionProfile:runtime.getInterventionProfile()}; setProfile(nextProfile); await profileStore.set(nextProfile); runtime.complete(); setRuntime(null); setStatus("Local session ended. Session aggregates were saved to this device.");}}>End session</button>}</div>
+    <div className="session-header"><div><span className="session-time">{sessionMinutes}:{sessionRemainder}</span><small>{sessionBudget?`${sessionProgress}% of ${sessionBudget} min budget`:"open session"}</small></div>{runtime&&<button className="secondary-button session-end" onClick={()=>void endSession()}>End session</button>}</div>
     {runtime&&sessionBudget>0&&<div className="session-progress"><div style={{width:`${sessionProgress}%`}}/></div>}
     <h2>{runtime?"Session active":"Ready for a local session"}</h2>
     <p>{runtime?"Waiting for real device/browser signals. No behavioral state is fabricated by this dashboard.":"Start a local session to define the attention boundary. Enforcement signals come from the connected device or browser component."}</p>
