@@ -101,6 +101,11 @@ export class EncryptedIndexedDbStore<T> implements SecureStore<T>{
     resolve(db);
    };
 
+   req.onblocked=()=>{
+    this.dbPromise=undefined;
+    reject(new Error("Local storage is blocked by another browser tab. Close older Attention Firewall tabs and retry."));
+   };
+
    req.onerror=()=>{
     this.dbPromise=undefined;
     reject(req.error??new Error("indexeddb open failed"));
