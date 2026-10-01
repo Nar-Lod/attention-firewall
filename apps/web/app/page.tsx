@@ -185,7 +185,6 @@ export default function Home(){
    setStatus("An active commitment already protects this destination. Review it below before creating another.");
    return;
   }
-  const now=Date.now();
   const commitment:Commitment={
    id:"commit_"+crypto.randomUUID(),
    label:"Protect "+target,
