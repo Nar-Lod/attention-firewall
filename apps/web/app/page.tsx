@@ -77,28 +77,33 @@ export default function Home(){
 
  useEffect(()=>{
   if(loaded)return;
+  // The control center must never depend on IndexedDB completing before it can render.
+  // Local storage hydrates in the background; storage failure is non-blocking.
+  setLoaded(true);
   void (async()=>{
    try{
-    const timeout=new Promise<never>((_,reject)=>window.setTimeout(()=>reject(new Error("Local storage initialization timed out. Please retry.")),8000));
-    const [stored,savedHistory]=await Promise.race([Promise.all([profileStore.get(),historyStore.get()]),timeout]) as [Profile|null,DailyHistory|null];
+    const timeout=new Promise<never>((_,reject)=>window.setTimeout(()=>reject(new Error("Local storage initialization timed out.")),8000));
+    const [stored,savedHistory]=await Promise.race([
+      Promise.all([profileStore.get(),historyStore.get()]),
+      timeout
+    ]) as [Profile|null,DailyHistory|null];
     const resolvedProfile=stored??blankProfile;
     const resolvedHistory=savedHistory??{version:1,days:[]};
     setProfile(resolvedProfile);
-   if(resolvedProfile.intent){
-    setIntent(resolvedProfile.intent.label);
-    setPurpose(resolvedProfile.intent.purpose);
-    setDomains(resolvedProfile.intent.targetDomains.join(", "));
-    setBudget(resolvedProfile.intent.budgetMinutes?String(resolvedProfile.intent.budgetMinutes):"");
-   }
-   setMode(resolvedProfile.protectionMode);
-   setRedirectShelf(resolvedProfile.redirectShelf??blankProfile.redirectShelf);
-   setHistory(resolvedHistory);
-   setSummary(resolvedHistory.days[0]??emptyDay());
-   setSetupFinished(Boolean(resolvedProfile.intent));
-   setLoaded(true);
+    if(resolvedProfile.intent){
+     setIntent(resolvedProfile.intent.label);
+     setPurpose(resolvedProfile.intent.purpose);
+     setDomains(resolvedProfile.intent.targetDomains.join(", "));
+     setBudget(resolvedProfile.intent.budgetMinutes?String(resolvedProfile.intent.budgetMinutes):"");
+    }
+    setMode(resolvedProfile.protectionMode);
+    setRedirectShelf(resolvedProfile.redirectShelf??blankProfile.redirectShelf);
+    setHistory(resolvedHistory);
+    setSummary(resolvedHistory.days[0]??emptyDay());
+    setSetupFinished(Boolean(resolvedProfile.intent));
    }catch(error){
-    setLoadError(error instanceof Error?error.message:"Unable to open local attention storage.");
-    setLoaded(true);
+    // Never trap the user on a loading screen because local persistence is unavailable.
+    setLoadError(error instanceof Error?error.message:"Local storage is unavailable.");
    }
   })();
  },[loaded,historyStore,profileStore]);
