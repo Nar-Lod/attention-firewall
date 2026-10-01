@@ -49,7 +49,7 @@ export default function Home(){
  const profileStore=useMemo(()=>new EncryptedIndexedDbStore<Profile>("profile-v2","attention-firewall-web-profile"),[]);
  const historyStore=useMemo(()=>new EncryptedIndexedDbStore<DailyHistory>("history-v2","attention-firewall-web-history"),[]);
 
- const [loaded,setLoaded]=useState(false);
+ const [loaded,setLoaded]=useState(true);
  const [profile,setProfile]=useState<Profile>(blankProfile);
  const [intent,setIntent]=useState("Finish focused work");
  const [purpose,setPurpose]=useState<Purpose>("work");
@@ -204,7 +204,6 @@ export default function Home(){
  const sessionBudget=profile.intent?.budgetMinutes??0;
  const sessionProgress=sessionBudget?Math.min(100,Math.round((sessionSeconds/(sessionBudget*60))*100)):0;
 
- if(!loaded)return <main className="onboarding-page"><div className="onboarding-card"><span className="setup-mark">AF</span><p className="eyebrow">ATTENTION FIREWALL</p><h1>Protect the attention you meant to use.</h1><p>Loading your private local control center…</p></div></main>;
  if(loadError)setStatus("Local persistence is unavailable right now. Your setup can still continue; we will retry storage when you save.");
  if(!setupFinished)return <main className="onboarding-page">
   <div className="onboarding-top"><div className="brand"><span className="mark">AF</span><div><strong>ATTENTION FIREWALL</strong><small>privacy-first attention control</small></div></div><span className="privacy">LOCAL SETUP · {setupStep+1}/4</span></div>
